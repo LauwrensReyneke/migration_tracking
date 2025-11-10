@@ -1,0 +1,41 @@
+# Node
+node_modules/
+
+# Vite build output
+/dist/
+
+# macOS
+.DS_Store
+
+# Local Vercel project config (created by `vercel` CLI on your machine)
+.vercel/
+
+# Environment files (keep an example checked in if needed)
+.env
+.env.*
+!.env.example
+
+# SQLite databases (anywhere)
+*.sqlite
+*.sqlite3
+*.db
+*.db3
+
+# SQL dumps/seed files
+# Keep the placeholder public/seed.sql tracked, ignore any other .sql files in public
+public/*.sql
+!public/seed.sql
+
+# Script-generated SQL exports and seeds
+scripts/*.sql
+
+# Logs
+*.log
+
+# Temporary/backup files
+*.tmp
+*.swp
+*.swo
+
+# Ignore the entire scripts/ directory to prevent future commits of migration dumps and samples.
+scripts/
