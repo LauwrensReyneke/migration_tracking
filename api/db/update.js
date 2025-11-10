@@ -9,11 +9,6 @@
 
 import { put } from '@vercel/blob';
 
-// Force Node.js runtime to avoid Edge unsupported modules
-export const config = {
-  runtime: 'nodejs'
-};
-
 export default async function handler(req, res) {
   if (req.method !== 'PUT') {
     res.status(405).json({ error: 'Method Not Allowed' });
