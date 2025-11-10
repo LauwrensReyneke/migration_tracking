@@ -205,8 +205,7 @@ export async function loadRemoteDB(url){
 // Remote write (PUT)
 export function getDBBytes(){ if (!db) throw new Error('DB not initialized'); return db.export(); }
 export async function pushRemoteDB(url){
-  const target = url || import.meta?.env?.VITE_SQLITE_PUT_URL;
-  if (!target) return { ok: false, reason: 'no_url' };
+  const target = url || import.meta?.env?.VITE_SQLITE_PUT_URL || '/api/db/update';
   const bytes = getDBBytes();
   const method = (import.meta?.env?.VITE_SQLITE_PUT_METHOD || 'PUT').toUpperCase();
   let headers = { 'Content-Type': 'application/octet-stream' };

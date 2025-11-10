@@ -27,7 +27,8 @@
     "vue": "^3.4.0",
     "vue-chartjs": "^5.3.1",
     "vue-router": "^4.3.0",
-    "vue3-apexcharts": "^1.10.0"
+    "vue3-apexcharts": "^1.10.0",
+    "@vercel/blob": "^0.24.0"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",
