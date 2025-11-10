@@ -10,6 +10,10 @@
 import { put } from '@vercel/blob';
 
 export default async function handler(req, res) {
+  if (req.method === 'GET') {
+    res.status(200).json({ ok: true, message: 'Use PUT with application/octet-stream to upload the SQLite DB', authRequired: !!process.env.DB_WRITE_TOKEN });
+    return;
+  }
   if (req.method !== 'PUT') {
     res.status(405).json({ error: 'Method Not Allowed' });
     return;
