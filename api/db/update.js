@@ -29,14 +29,24 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Auth check (support 'Bearer <token>' OR raw '<token>')
-  const rawHeader = req.headers['authorization'] || '';
-  const expectedToken = process.env.DB_WRITE_TOKEN || '';
-  const bearerForm = `Bearer ${expectedToken}`;
-  const okAuth = expectedToken && (rawHeader.trim() === bearerForm || rawHeader.trim() === expectedToken);
+  // Normalize and validate Authorization
+  const rawHeader = (req.headers['authorization'] || '').toString().trim();
+  // strip wrapping single/double quotes if present
+  const dequoted = rawHeader.replace(/^['"]|['"]$/g, '');
+  const parts = dequoted.split(/\s+/);
+  let presentedToken = dequoted;
+  if (parts.length >= 2 && parts[0].toLowerCase() === 'bearer') {
+    presentedToken = parts.slice(1).join(' ');
+  }
+
+  const candidates = [];
+  if (process.env.DB_WRITE_TOKEN) candidates.push(process.env.DB_WRITE_TOKEN);
+  if (process.env.BLOB_READ_WRITE_TOKEN) candidates.push(process.env.BLOB_READ_WRITE_TOKEN);
+
+  const okAuth = candidates.length > 0 && candidates.some(tok => tok && presentedToken === tok);
 
   if (!okAuth) {
-    res.status(401).json({ error: 'Unauthorized', receivedSample: rawHeader ? rawHeader.split(' ').slice(0,2).join(' ') : 'none', requiredFormat: 'Authorization: Bearer <DB_WRITE_TOKEN>' });
+    res.status(401).json({ error: 'Unauthorized', receivedFormat: rawHeader ? rawHeader.split(' ').slice(0,2).join(' ') : 'none', advice: 'Send Authorization: Bearer <token>' });
     return;
   }
 
