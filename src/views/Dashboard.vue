@@ -2,6 +2,7 @@
   <div class="max-w-7xl mx-auto p-6 space-y-8">
     <Teleport to="#header-actions">
       <div class="flex items-center gap-2">
+        <DBStatus />
         <ExportMenu />
       </div>
     </Teleport>
@@ -255,6 +256,7 @@ import Sparkline from '../components/Sparkline.vue';
 import Tooltip from '../components/Tooltip.vue';
 import DailyThroughputChart from '../components/DailyThroughputChart.vue';
 import ExportMenu from '../components/ExportMenu.vue';
+import DBStatus from '../components/DBStatus.vue';
 import { ref, computed } from 'vue';
 import { useStorage } from '@vueuse/core'
 
