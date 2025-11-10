@@ -29,23 +29,24 @@ export default async function handler(req, res) {
     return;
   }
 
+  const allowNoAuth = process.env.ALLOW_NO_AUTH_WRITE === '1';
   // Normalize and validate Authorization
   const rawHeader = (req.headers['authorization'] || '').toString().trim();
-  // strip wrapping single/double quotes if present
   const dequoted = rawHeader.replace(/^['"]|['"]$/g, '');
   const parts = dequoted.split(/\s+/);
   let presentedToken = dequoted;
   if (parts.length >= 2 && parts[0].toLowerCase() === 'bearer') {
     presentedToken = parts.slice(1).join(' ');
   }
-
   const candidates = [];
   if (process.env.DB_WRITE_TOKEN) candidates.push(process.env.DB_WRITE_TOKEN);
   if (process.env.BLOB_READ_WRITE_TOKEN) candidates.push(process.env.BLOB_READ_WRITE_TOKEN);
-
   const okAuth = candidates.length > 0 && candidates.some(tok => tok && presentedToken === tok);
-
-  if (!okAuth) {
+  if (!okAuth && allowNoAuth && !rawHeader) {
+    console.log('[update] bypass auth (ALLOW_NO_AUTH_WRITE=1)');
+  }
+  if (!okAuth && !(allowNoAuth && !rawHeader)) {
+    console.log('[update] auth failed', { headerPrefix: rawHeader.slice(0,15), tokenPrefixes: candidates.map(t=>t.slice(0,15)) });
     res.status(401).json({ error: 'Unauthorized', receivedFormat: rawHeader ? rawHeader.split(' ').slice(0,2).join(' ') : 'none', advice: 'Send Authorization: Bearer <token>' });
     return;
   }

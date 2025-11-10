@@ -217,19 +217,21 @@ export async function pushRemoteDB(url){
       if (parsed && typeof parsed === 'object') { headers = { ...headers, ...parsed }; authSet = !!(parsed.Authorization || parsed.authorization); }
     }
   } catch {}
-  // Fallback: explicit Authorization value
   if (!authSet) {
     const authVal = import.meta?.env?.VITE_SQLITE_PUT_AUTH;
     if (authVal) { headers.Authorization = authVal; authSet = true; }
   }
-  // Fallback: token provided directly
   if (!authSet) {
     const token = import.meta?.env?.VITE_DB_WRITE_TOKEN;
     if (token) { headers.Authorization = `Bearer ${token}`; authSet = true; }
   }
+  if (!authSet) {
+    const blobToken = import.meta?.env?.VITE_BLOB_READ_WRITE_TOKEN;
+    if (blobToken) { headers.Authorization = `Bearer ${blobToken}`; authSet = true; }
+  }
   const res = await fetch(target, { method, headers, body: bytes });
-  if (!res.ok && (res.status === 401 || res.status === 403)) {
-    console.warn('[pushRemoteDB] Auth failed', { status: res.status, target, sentAuth: headers['Authorization'] || headers['authorization'] });
+  if (!res.ok) {
+    console.warn('[pushRemoteDB] push failed', { status: res.status, target, sentAuth: headers.Authorization });
   }
   return { ok: res.ok, status: res.status };
 }
