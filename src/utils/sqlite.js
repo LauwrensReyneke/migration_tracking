@@ -34,7 +34,14 @@ export async function initDB(){
   // Prefer loading remote DB if configured
   const remoteUrl = import.meta?.env?.VITE_SQLITE_URL;
   if (remoteUrl) {
-    await loadRemoteDB(remoteUrl);
+    try {
+      console.log('[initDB] attempting remote SQLite load', { url: remoteUrl });
+      await loadRemoteDB(remoteUrl);
+      console.log('[initDB] remote SQLite loaded OK');
+    } catch (e) {
+      console.warn('[initDB] remote SQLite load failed; falling back to empty DB', { url: remoteUrl, error: e?.message||String(e) });
+      db = new SQL.Database();
+    }
   } else {
     db = new SQL.Database();
   }
@@ -194,11 +201,49 @@ export async function verifyLogin(username, password){
 // Load a remote SQLite database file (arraybuffer)
 export async function loadRemoteDB(url){
   if (!SQL) SQL = await initSqlJs({ locateFile: () => wasmUrl });
-  const res = await fetch(url, { cache: 'no-store' });
-  if (!res.ok) throw new Error(`Failed to load database from ${url}`);
-  const bytes = new Uint8Array(await res.arrayBuffer());
+  console.log('[loadRemoteDB] fetching remote DB', { url });
+
+  const tryFetch = async (u) => {
+    const res = await fetch(u, { cache: 'no-store' });
+    const ct = res.headers?.get?.('content-type') || 'unknown';
+    const ab = res.ok ? await res.arrayBuffer() : null;
+    const len = ab ? ab.byteLength : 0;
+    return { res, ct, ab, len };
+  };
+
+  const addDownloadParam = (u) => {
+    try {
+      const hx = new URL(u, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
+      if (!hx.searchParams.has('download')) hx.searchParams.set('download', '1');
+      return hx.toString();
+    } catch { return u + (u.includes('?') ? '&' : '?') + 'download=1'; }
+  };
+
+  let first = await tryFetch(url);
+  let attempt = 1;
+
+  // If first fetch has unexpected type or is empty, try again with ?download=1
+  if (first.res?.ok && (/text\/html|application\/json/i.test(first.ct) || first.len === 0)) {
+    const alt = addDownloadParam(url);
+    console.warn('[loadRemoteDB] unexpected response; retrying with download=1', { contentType: first.ct, len: first.len, alt });
+    const second = await tryFetch(alt);
+    if (second.res?.ok && second.len > 0) first = second; // use the better result
+    attempt = 2;
+  }
+
+  if (!first.res?.ok) {
+    console.warn('[loadRemoteDB] fetch failed', { status: first.res?.status, statusText: first.res?.statusText, contentType: first.ct });
+    throw new Error(`Failed to load database from ${url} (status ${first.res?.status||'n/a'})`);
+  }
+  if (!first.len) {
+    console.warn('[loadRemoteDB] remote bytes empty after attempts', { attempts: attempt, contentType: first.ct });
+    throw new Error('Remote database file was empty');
+  }
+
+  const bytes = new Uint8Array(first.ab);
   try { if (db && typeof db.close === 'function') db.close(); } catch {}
   db = new SQL.Database(bytes);
+  console.log('[loadRemoteDB] remote DB instantiated', { size: bytes.length, attempts: attempt, contentType: first.ct });
   return db;
 }
 
