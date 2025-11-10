@@ -1,4 +1,4 @@
-// Vercel Serverless (Edge) endpoint to receive the updated SQLite binary
+// Vercel Serverless (Node.js) endpoint to receive the updated SQLite binary
 // and write it to Vercel Blob Storage.
 // Usage:
 //  - Set env var DB_WRITE_TOKEN to a secret value.
@@ -9,45 +9,45 @@
 
 import { put } from '@vercel/blob';
 
+// Force Node.js runtime to avoid Edge unsupported modules
 export const config = {
-  runtime: 'edge'
+  runtime: 'nodejs'
 };
 
-function json(body, status = 200) {
-  return new Response(JSON.stringify(body), {
-    status,
-    headers: { 'Content-Type': 'application/json' }
-  });
-}
-
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method !== 'PUT') {
-    return json({ error: 'Method Not Allowed' }, 405);
+    res.status(405).json({ error: 'Method Not Allowed' });
+    return;
   }
 
   // Simple auth check
-  const auth = req.headers.get('authorization');
+  const auth = req.headers['authorization'];
   const expected = process.env.DB_WRITE_TOKEN ? `Bearer ${process.env.DB_WRITE_TOKEN}` : null;
   if (expected && auth !== expected) {
-    return json({ error: 'Unauthorized' }, 401);
+    res.status(401).json({ error: 'Unauthorized' });
+    return;
   }
 
   try {
-    const data = await req.arrayBuffer();
-    if (!data || data.byteLength === 0) {
-      return json({ error: 'Empty body' }, 400);
+    // Read raw binary body
+    const chunks = [];
+    for await (const chunk of req) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    const body = Buffer.concat(chunks);
+    if (!body || body.length === 0) {
+      res.status(400).json({ error: 'Empty body' });
+      return;
     }
 
-    // Write to blob (overwrites existing because addRandomSuffix: false)
-    await put('migration_tracking.sqlite', data, {
+    await put('migration_tracking.sqlite', body, {
       access: 'public',
       addRandomSuffix: false,
       contentType: 'application/octet-stream'
     });
 
-    return json({ ok: true, bytes: data.byteLength });
+    res.status(200).json({ ok: true, bytes: body.length });
   } catch (e) {
-    return json({ error: e?.message || String(e) }, 500);
+    res.status(500).json({ error: e?.message || String(e) });
   }
 }
-
