@@ -209,13 +209,27 @@ export async function pushRemoteDB(url){
   const bytes = getDBBytes();
   const method = (import.meta?.env?.VITE_SQLITE_PUT_METHOD || 'PUT').toUpperCase();
   let headers = { 'Content-Type': 'application/octet-stream' };
+  let authSet = false;
   try {
     const extra = import.meta?.env?.VITE_SQLITE_PUT_HEADERS;
     if (extra) {
       const parsed = JSON.parse(extra);
-      if (parsed && typeof parsed === 'object') headers = { ...headers, ...parsed };
+      if (parsed && typeof parsed === 'object') { headers = { ...headers, ...parsed }; authSet = !!(parsed.Authorization || parsed.authorization); }
     }
   } catch {}
+  // Fallback: explicit Authorization value
+  if (!authSet) {
+    const authVal = import.meta?.env?.VITE_SQLITE_PUT_AUTH;
+    if (authVal) { headers.Authorization = authVal; authSet = true; }
+  }
+  // Fallback: token provided directly
+  if (!authSet) {
+    const token = import.meta?.env?.VITE_DB_WRITE_TOKEN;
+    if (token) { headers.Authorization = `Bearer ${token}`; authSet = true; }
+  }
   const res = await fetch(target, { method, headers, body: bytes });
+  if (!res.ok && (res.status === 401 || res.status === 403)) {
+    console.warn('[pushRemoteDB] Auth failed', { status: res.status, target, sentAuth: headers['Authorization'] || headers['authorization'] });
+  }
   return { ok: res.ok, status: res.status };
 }
