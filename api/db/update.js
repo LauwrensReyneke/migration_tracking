@@ -73,8 +73,10 @@ export default async function handler(req, res) {
   }
 
   if (!okAuth) {
-    const resp = { error: 'Unauthorized' };
-    if (debug) resp.debug = { headerRawPrefix: rawHeader.slice(0,30), presented: redact(presented), candidates: candidates.map(c=>redact(c)) };
+    const authCase = !rawHeader ? 'no_header' : (!presented ? 'empty_presented' : (candidates.length ? 'mismatch' : 'no_candidates'));
+    const resp = { error: 'Unauthorized', authCase };
+    // Always include redacted debug to aid troubleshooting (safe)
+    resp.debug = { headerRawPrefix: rawHeader.slice(0,30), presented: redact(presented), candidates: candidates.map(c=>redact(c)), candidateCount: candidates.length };
     res.status(401).json(resp);
     return; }
 

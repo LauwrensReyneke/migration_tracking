@@ -252,19 +252,24 @@ export function getDBBytes(){ if (!db) throw new Error('DB not initialized'); re
 export async function pushRemoteDB(url){
   const baseTarget = url || import.meta?.env?.VITE_SQLITE_PUT_URL || '/api/db/update';
   const debug = import.meta?.env?.VITE_DEBUG_DB === '1';
-  const target = debug ? (baseTarget + (baseTarget.includes('?') ? '&' : '?') + 'debug=1') : baseTarget;
+  const useRelay = import.meta?.env?.VITE_USE_RELAY === '1' || !(import.meta?.env?.VITE_DB_WRITE_TOKEN || import.meta?.env?.VITE_BLOB_READ_WRITE_TOKEN);
+  const relayKey = import.meta?.env?.VITE_RELAY_WRITE_KEY || '';
+  const targetBase = useRelay ? '/api/db/relay' : baseTarget;
+  const target = debug ? (targetBase + (targetBase.includes('?') ? '&' : '?') + 'debug=1') : targetBase;
   const bytes = getDBBytes();
   const headers = { 'Content-Type': 'application/octet-stream' };
   const rawToken = import.meta?.env?.VITE_DB_WRITE_TOKEN || import.meta?.env?.VITE_BLOB_READ_WRITE_TOKEN || '';
-  let normalizedToken = rawToken;
-  if (rawToken) normalizedToken = /^Bearer\s+/i.test(rawToken) ? rawToken.replace(/^Bearer\s+/i,'').trim() : rawToken.trim();
-  if (rawToken) headers.Authorization = `Bearer ${normalizedToken}`;
+  if (!useRelay && rawToken) {
+    const normalizedToken = /^Bearer\s+/i.test(rawToken) ? rawToken.replace(/^Bearer\s+/i,'').trim() : rawToken.trim();
+    headers.Authorization = `Bearer ${normalizedToken}`;
+  }
+  if (useRelay && relayKey) headers['X-Relay-Key'] = relayKey;
   if (debug) {
-    console.log('[pushRemoteDB] start', { target, tokenPresent: !!rawToken, authHeader: headers.Authorization?.slice(0,30)+'…', bytes: bytes.length });
+    console.log('[pushRemoteDB] start', { target, mode: useRelay?'relay':'direct', tokenPresent: !!rawToken, hasRelayKey: !!relayKey, bytes: bytes.length, authHeader: headers.Authorization?.slice(0,30)+'…' });
     try {
-      const metaRes = await fetch(baseTarget + (baseTarget.includes('?') ? '&' : '?') + 'debug=1');
+      const metaRes = await fetch((useRelay?'/api/db/relay':'/api/db/update') + '?debug=1');
       const metaTxt = await metaRes.text();
-      console.log('[pushRemoteDB] server debug meta', { status: metaRes.status, body: metaTxt.slice(0,400) });
+      console.log('[pushRemoteDB] server debug meta', { mode: useRelay?'relay':'direct', status: metaRes.status, body: metaTxt.slice(0,400) });
     } catch (e) { console.log('[pushRemoteDB] server debug meta fetch failed', e?.message||String(e)); }
   }
   const t0 = performance.now();
