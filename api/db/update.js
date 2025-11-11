@@ -33,13 +33,16 @@ export default async function handler(req, res) {
   const candidates = candidatesRaw.map(normalize).filter(Boolean);
   const blobName = 'migration_tracking.sqlite';
   const debug = dbgEnabled(req.url);
+  let dryRun = false;
+  try { const u = new URL(req.url, 'http://localhost'); dryRun = u.searchParams.get('dry') === '1'; } catch {}
 
   if (debug) {
     console.log('[db/update] init', {
       method,
       candidateCount: candidates.length,
       tokens: candidatesRaw.map(t=>redact(t)),
-      normalized: candidates.map(t=>redact(t))
+      normalized: candidates.map(t=>redact(t)),
+      dryRun
     });
   }
 
@@ -74,6 +77,13 @@ export default async function handler(req, res) {
     if (debug) resp.debug = { headerRawPrefix: rawHeader.slice(0,30), presented: redact(presented), candidates: candidates.map(c=>redact(c)) };
     res.status(401).json(resp);
     return; }
+
+  if (dryRun) {
+    const resp = { ok: true, dryRun: true };
+    if (debug) resp.debug = { presented: redact(presented), candidateRedacted: candidates.map(c=>redact(c)) };
+    res.status(200).json(resp);
+    return;
+  }
 
   try {
     const chunks = []; for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
