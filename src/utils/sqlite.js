@@ -31,8 +31,8 @@ function b64ToBytes(b){ return base64ToBytes(b); }
 export async function initDB(){
   if (db) return db;
   if (!SQL) SQL = await initSqlJs({ locateFile: () => wasmUrl });
-  // Prefer loading remote DB if configured
-  const remoteUrl = import.meta?.env?.VITE_SQLITE_URL;
+  // Prefer loading remote DB only if explicitly configured
+  const remoteUrl = import.meta?.env?.VITE_SQLITE_URL || null;
   if (remoteUrl) {
     try {
       console.log('[initDB] attempting remote SQLite load', { url: remoteUrl });
@@ -252,31 +252,13 @@ export function getDBBytes(){ if (!db) throw new Error('DB not initialized'); re
 export async function pushRemoteDB(url){
   const target = url || import.meta?.env?.VITE_SQLITE_PUT_URL || '/api/db/update';
   const bytes = getDBBytes();
-  const method = (import.meta?.env?.VITE_SQLITE_PUT_METHOD || 'PUT').toUpperCase();
-  let headers = { 'Content-Type': 'application/octet-stream' };
-  let authSet = false;
-  try {
-    const extra = import.meta?.env?.VITE_SQLITE_PUT_HEADERS;
-    if (extra) {
-      const parsed = JSON.parse(extra);
-      if (parsed && typeof parsed === 'object') { headers = { ...headers, ...parsed }; authSet = !!(parsed.Authorization || parsed.authorization); }
-    }
-  } catch {}
-  if (!authSet) {
-    const authVal = import.meta?.env?.VITE_SQLITE_PUT_AUTH;
-    if (authVal) { headers.Authorization = authVal; authSet = true; }
-  }
-  if (!authSet) {
-    const token = import.meta?.env?.VITE_DB_WRITE_TOKEN;
-    if (token) { headers.Authorization = `Bearer ${token}`; authSet = true; }
-  }
-  if (!authSet) {
-    const blobToken = import.meta?.env?.VITE_BLOB_READ_WRITE_TOKEN;
-    if (blobToken) { headers.Authorization = `Bearer ${blobToken}`; authSet = true; }
-  }
-  const res = await fetch(target, { method, headers, body: bytes });
+  const headers = { 'Content-Type': 'application/octet-stream' };
+  const token = import.meta?.env?.VITE_DB_WRITE_TOKEN || import.meta?.env?.VITE_BLOB_READ_WRITE_TOKEN;
+  if (token) headers.Authorization = `Bearer ${token}`;
+  const res = await fetch(target, { method: 'PUT', headers, body: bytes });
   if (!res.ok) {
-    console.warn('[pushRemoteDB] push failed', { status: res.status, target, sentAuth: headers.Authorization });
+    const txt = await res.text().catch(()=> '');
+    console.warn('[pushRemoteDB] failed', { status: res.status, target, body: txt.slice(0,200) });
   }
   return { ok: res.ok, status: res.status };
 }
