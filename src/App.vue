@@ -17,11 +17,50 @@
               <button @click="sidebarOpen = false" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded hover:bg-white/10 text-white" aria-label="Close menu">✕</button>
             </div>
             <nav class="p-3 space-y-1 text-sm">
-              <RouterLink v-for="item in nav" :key="item.to" :to="item.to"
-                class="block px-3 py-2 rounded-md text-slate-700 hover:bg-slate-50"
-                active-class="bg-blue-50 text-blue-700 font-medium">
-                {{ item.label }}
-              </RouterLink>
+              <!-- Migration group (mobile) -->
+              <div class="space-y-1">
+                <div class="flex items-center justify-between px-3 py-2 rounded-md hover:bg-slate-50">
+                  <RouterLink :to="'/'" class="flex items-center gap-2 flex-1 min-w-0 text-slate-700" active-class="!text-blue-700 font-medium">
+                    <svg class="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <!-- Migration icon: simple arrows loop -->
+                      <path d="M4 7h7m0 0-2-2m2 2-2 2"/>
+                      <path d="M20 17h-7m0 0 2 2m-2-2 2-2"/>
+                      <rect x="3" y="5" width="18" height="14" rx="2" ry="2" class="opacity-20"/>
+                    </svg>
+                    <span class="truncate">Migration</span>
+                  </RouterLink>
+                  <button @click="toggleMigration()" :aria-expanded="migrationOpen.toString()" class="ml-2 p-1 rounded hover:bg-slate-100 text-slate-600">
+                    <svg class="h-4 w-4 transition-transform" :class="{ 'rotate-90': migrationOpen }" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                      <path fill-rule="evenodd" d="M6.293 7.293a1 1 0 0 1 1.414 0L12 11.586l-4.293-4.293a1 1 0 0 1 0-1.414z" clip-rule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
+                <div v-show="migrationOpen" class="pl-9 space-y-1">
+                  <RouterLink to="/projects" class="flex items-center gap-2 px-3 py-2 rounded-md text-slate-700 hover:bg-slate-50" active-class="bg-blue-50 text-blue-700 font-medium">
+                    <svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <!-- Projects icon: folder -->
+                      <path d="M3 7h5l2 2h11v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+                    </svg>
+                    <span>Projects</span>
+                  </RouterLink>
+                  <RouterLink to="/developers" class="flex items-center gap-2 px-3 py-2 rounded-md text-slate-700 hover:bg-slate-50" active-class="bg-blue-50 text-blue-700 font-medium">
+                    <svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <!-- Developers icon: users -->
+                      <path d="M16 11a4 4 0 1 0-8 0"/>
+                      <path d="M3 20a6 6 0 0 1 18 0"/>
+                    </svg>
+                    <span>Developers</span>
+                  </RouterLink>
+                  <RouterLink to="/timeline" class="flex items-center gap-2 px-3 py-2 rounded-md text-slate-700 hover:bg-slate-50" active-class="bg-blue-50 text-blue-700 font-medium">
+                    <svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                      <!-- Timeline icon: clock -->
+                      <circle cx="12" cy="12" r="8"/>
+                      <path d="M12 8v5l3 2"/>
+                    </svg>
+                    <span>Timeline</span>
+                  </RouterLink>
+                </div>
+              </div>
             </nav>
             <!-- Profile bottom -->
             <div class="mt-auto p-3 border-t border-slate-200 text-xs flex items-center justify-between">
@@ -40,11 +79,50 @@
             </RouterLink>
         </div>
         <nav class="p-3 space-y-1 text-sm">
-          <RouterLink v-for="item in nav" :key="item.to" :to="item.to"
-            class="block px-3 py-2 rounded-md text-slate-700 hover:bg-slate-50"
-            active-class="bg-blue-50 text-blue-700 font-medium">
-            {{ item.label }}
-          </RouterLink>
+          <!-- Migration group (desktop) -->
+          <div class="space-y-1">
+            <div class="flex items-center justify-between px-3 py-2 rounded-md hover:bg-slate-50">
+              <RouterLink :to="'/'" class="flex items-center gap-2 flex-1 min-w-0 text-slate-700" active-class="!text-blue-700 font-medium">
+                <svg class="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <!-- Migration icon: simple arrows loop -->
+                  <path d="M4 7h7m0 0-2-2m2 2-2 2"/>
+                  <path d="M20 17h-7m0 0 2 2m-2-2 2-2"/>
+                  <rect x="3" y="5" width="18" height="14" rx="2" ry="2" class="opacity-20"/>
+                </svg>
+                <span class="truncate">Migration</span>
+              </RouterLink>
+              <button @click="toggleMigration()" :aria-expanded="migrationOpen.toString()" class="ml-2 p-1 rounded hover:bg-slate-100 text-slate-600">
+                <svg class="h-4 w-4 transition-transform" :class="{ 'rotate-90': migrationOpen }" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                  <path fill-rule="evenodd" d="M6.293 7.293a1 1 0 0 1 1.414 0L12 11.586l-4.293-4.293a1 1 0 0 1 0-1.414z" clip-rule="evenodd" />
+                </svg>
+              </button>
+            </div>
+            <div v-show="migrationOpen" class="pl-9 space-y-1">
+              <RouterLink to="/projects" class="flex items-center gap-2 px-3 py-2 rounded-md text-slate-700 hover:bg-slate-50" active-class="bg-blue-50 text-blue-700 font-medium">
+                <svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <!-- Projects icon: folder -->
+                  <path d="M3 7h5l2 2h11v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+                </svg>
+                <span>Projects</span>
+              </RouterLink>
+              <RouterLink to="/developers" class="flex items-center gap-2 px-3 py-2 rounded-md text-slate-700 hover:bg-slate-50" active-class="bg-blue-50 text-blue-700 font-medium">
+                <svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <!-- Developers icon: users -->
+                  <path d="M16 11a4 4 0 1 0-8 0"/>
+                  <path d="M3 20a6 6 0 0 1 18 0"/>
+                </svg>
+                <span>Developers</span>
+              </RouterLink>
+              <RouterLink to="/timeline" class="flex items-center gap-2 px-3 py-2 rounded-md text-slate-700 hover:bg-slate-50" active-class="bg-blue-50 text-blue-700 font-medium">
+                <svg class="h-4 w-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <!-- Timeline icon: clock -->
+                  <circle cx="12" cy="12" r="8"/>
+                  <path d="M12 8v5l3 2"/>
+                </svg>
+                <span>Timeline</span>
+              </RouterLink>
+            </div>
+          </div>
         </nav>
         <!-- Profile bottom -->
         <div class="mt-auto p-4 border-t border-slate-200/80 text-xs flex items-center justify-between">
@@ -91,15 +169,19 @@ const auth = useAuthStore();
 const router = useRouter();
 
 const sidebarOpen = ref(false);
-const nav = [
-  { to: '/', label: 'Migration Dashboard' },
-  { to: '/projects', label: 'Projects' },
-  { to: '/developers', label: 'Developers' },
-  { to: '/timeline', label: 'Timeline' },
-];
+// Navigation collapsed state for Migration group
+const migrationOpen = ref(true);
 
 const route = useRoute();
 watch(() => route.fullPath, () => { sidebarOpen.value = false; });
+
+// Open group when navigating within Migration area
+const groupNames = new Set(['dashboard','projects','developers','timeline','devDetail']);
+watch(() => route.name, (n) => {
+  if (groupNames.has(n)) migrationOpen.value = true;
+}, { immediate: true });
+
+function toggleMigration(){ migrationOpen.value = !migrationOpen.value; }
 
 const pageTitle = computed(() => {
   switch(route.name){
