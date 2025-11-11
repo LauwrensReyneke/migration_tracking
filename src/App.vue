@@ -1,5 +1,5 @@
 <template>
-  <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white">
+  <div class="min-h-screen bg-gradient-to-b from-slate-50 to-white overflow-x-hidden">
     <!-- If not logged in: render router-view alone (login screen) -->
     <div v-if="!auth.loggedIn" class="min-h-screen">
       <router-view />
@@ -11,11 +11,9 @@
           <div class="absolute inset-0 bg-black/30" @click="sidebarOpen = false"></div>
           <aside class="absolute inset-y-0 left-0 w-72 bg-white shadow-xl border-r border-slate-200 flex flex-col">
             <div class="relative h-14 px-4 flex items-center justify-start bg-black border-b border-black">
-              <h1 class="font-semibold text-lg text-slate-900">
                 <RouterLink to="/" class="inline-flex items-center">
                   <img src="/R-E-D_Logo.webp" alt="R-E-D Logo" class="h-6 w-auto" loading="eager" decoding="async" />
                 </RouterLink>
-              </h1>
               <button @click="sidebarOpen = false" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded hover:bg-white/10 text-white" aria-label="Close menu">✕</button>
             </div>
             <nav class="p-3 space-y-1 text-sm">
@@ -37,11 +35,9 @@
       <!-- Static sidebar for md+ (fixed) -->
       <aside class="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col bg-white/80 backdrop-blur border-r border-slate-200/80 shadow-sm overflow-y-auto">
         <div class="h-14 px-4 flex items-center justify-start bg-black border-b border-black">
-          <h1 class="font-semibold text-lg text-slate-900">
             <RouterLink to="/" class="inline-flex items-center">
               <img src="/R-E-D_Logo.webp" alt="R-E-D Logo" class="h-6 w-auto" loading="eager" decoding="async" />
             </RouterLink>
-          </h1>
         </div>
         <nav class="p-3 space-y-1 text-sm">
           <RouterLink v-for="item in nav" :key="item.to" :to="item.to"
@@ -60,13 +56,13 @@
       <!-- Main column -->
       <div class="flex-1 flex flex-col min-w-0 md:ml-64">
         <!-- Top bar -->
-        <header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200/80 shadow-sm">
-          <div class="px-4 h-14 flex items-center gap-3">
+        <header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200/80 shadow-sm overflow-hidden">
+          <div class="px-4 h-14 flex items-center gap-3 w-full max-w-full overflow-x-hidden">
             <button @click="sidebarOpen = true" class="md:hidden p-2 rounded hover:bg-slate-100 border border-slate-200 text-slate-700" aria-label="Open menu">☰</button>
-            <h2 class="text-base md:text-lg font-semibold text-slate-900 truncate">{{ pageTitle }}</h2>
-            <div class="ml-auto flex items-center gap-2 min-w-0">
-              <!-- Teleport target for per-view header controls -->
-              <div id="header-actions" class="flex items-center gap-2 overflow-x-auto overflow-y-visible whitespace-nowrap pr-2 h-10 py-1"></div>
+            <h2 class="flex-1 min-w-0 text-base md:text-lg font-semibold text-slate-900 truncate">{{ pageTitle }}</h2>
+            <!-- Actions wrapper: constrain width & allow internal scroll without causing page overflow -->
+            <div class="relative flex items-center gap-2 shrink min-w-0 max-w-[55%] md:max-w-[40%]">
+              <div id="header-actions" class="flex items-center gap-2 overflow-x-auto overflow-y-hidden whitespace-nowrap py-1 h-10 pr-2 no-scrollbar min-w-0 max-w-full"></div>
             </div>
           </div>
         </header>
@@ -87,7 +83,6 @@
 <script setup>
 import { ref, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useStorage } from '@vueuse/core';
 import { useAuthStore } from './stores/auth';
 import EnvDebug from './components/EnvDebug.vue';
 
@@ -119,8 +114,6 @@ const pageTitle = computed(() => {
 // Sync document.title with site title + page title
 watch(pageTitle, (t) => { if (t) document.title = `Bob Sites — ${t}`; }, { immediate: true });
 
-const showSparklines = useStorage('pref_show_sparklines', true);
-
 function logout(){
   auth.logout();
   router.replace({ name: 'login' });
@@ -142,4 +135,6 @@ if (import.meta?.env?.VITE_DEBUG_ENV === '1') {
 <style>
 .fade-fast-enter-active,.fade-fast-leave-active{ transition: opacity .15s ease; }
 .fade-fast-enter-from,.fade-fast-leave-to{ opacity: 0; }
+.no-scrollbar::-webkit-scrollbar{ display:none; }
+.no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
 </style>

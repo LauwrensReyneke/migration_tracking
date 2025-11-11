@@ -1,9 +1,9 @@
 <template>
   <div class="max-w-7xl mx-auto p-8 space-y-8">
     <Teleport to="#header-actions">
-      <div class="flex items-center gap-2 w-full min-w-0">
+      <div class="flex items-center gap-2 min-w-0">
         <!-- Header filters: show only on 2xl+ screens -->
-        <div class="hidden 2xl:flex items-center gap-3 w-full">
+        <div class="hidden 2xl:flex items-center gap-3">
           <input v-model="search" placeholder="Search Projects" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm w-48 focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
           <select v-model="typeFilter" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
             <option value="all">All Types</option>

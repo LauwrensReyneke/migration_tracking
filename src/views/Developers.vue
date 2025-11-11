@@ -4,7 +4,7 @@
     <div v-else>
       <div class="max-w-7xl mx-auto p-6 space-y-8">
         <Teleport to="#header-actions">
-          <div class="flex items-center gap-3 w-full">
+          <div class="flex items-center gap-3">
             <span v-if="developers.length" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-slate-100 text-slate-700 text-xs">Total: {{ developers.length }}</span>
             <button @click="openAddModal" class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-xs px-3 py-1.5 rounded-lg shadow-sm">
               <UserPlusIcon class="w-4 h-4" />
