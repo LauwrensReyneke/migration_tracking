@@ -10,7 +10,7 @@
         <div v-if="sidebarOpen" class="fixed inset-0 z-40 md:hidden">
           <div class="absolute inset-0 bg-black/30" @click="sidebarOpen = false"></div>
           <aside class="absolute inset-y-0 left-0 w-72 bg-white shadow-xl border-r border-slate-200 flex flex-col">
-            <div class="relative h-14 px-4 flex items-center justify-center bg-black border-b border-black">
+            <div class="relative h-14 px-4 flex items-center justify-start bg-black border-b border-black">
               <h1 class="font-semibold text-lg text-slate-900">
                 <RouterLink to="/" class="inline-flex items-center">
                   <img src="/R-E-D_Logo.webp" alt="R-E-D Logo" class="h-6 w-auto" loading="eager" decoding="async" />
@@ -36,7 +36,7 @@
 
       <!-- Static sidebar for md+ (fixed) -->
       <aside class="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col bg-white/80 backdrop-blur border-r border-slate-200/80 shadow-sm overflow-y-auto">
-        <div class="h-14 px-4 flex items-center justify-center bg-black border-b border-black">
+        <div class="h-14 px-4 flex items-center justify-start bg-black border-b border-black">
           <h1 class="font-semibold text-lg text-slate-900">
             <RouterLink to="/" class="inline-flex items-center">
               <img src="/R-E-D_Logo.webp" alt="R-E-D Logo" class="h-6 w-auto" loading="eager" decoding="async" />
@@ -61,12 +61,12 @@
       <div class="flex-1 flex flex-col min-w-0 md:ml-64">
         <!-- Top bar -->
         <header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200/80 shadow-sm">
-          <div class="px-4 py-3 flex items-center gap-3">
+          <div class="px-4 h-14 flex items-center gap-3">
             <button @click="sidebarOpen = true" class="md:hidden p-2 rounded hover:bg-slate-100 border border-slate-200 text-slate-700" aria-label="Open menu">☰</button>
             <h2 class="text-base md:text-lg font-semibold text-slate-900 truncate">{{ pageTitle }}</h2>
             <div class="ml-auto flex items-center gap-2 min-w-0">
               <!-- Teleport target for per-view header controls -->
-              <div id="header-actions" class="flex items-center gap-2 overflow-x-auto whitespace-nowrap pr-2"></div>
+              <div id="header-actions" class="flex items-center gap-2 overflow-x-auto whitespace-nowrap pr-2 h-8"></div>
             </div>
           </div>
         </header>
