@@ -70,7 +70,7 @@
             </transition>
           </router-view>
         </main>
-
+        <EnvDebug v-if="showEnvDebug" />
         <footer class="text-center text-xs py-4 text-gray-400">&copy; 2025 Lauwrens Reyneke | CTO</footer>
       </div>
     </div>
@@ -81,6 +81,7 @@ import { ref, watch, computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useStorage } from '@vueuse/core';
 import { useAuthStore } from './stores/auth';
+import EnvDebug from './components/EnvDebug.vue';
 
 const auth = useAuthStore();
 const router = useRouter();
@@ -113,6 +114,21 @@ const showSparklines = useStorage('pref_show_sparklines', true);
 function logout(){
   auth.logout();
   router.replace({ name: 'login' });
+}
+
+const showEnvDebug = computed(()=>{
+  try { return new URL(window.location.href).searchParams.get('env') === '1'; } catch { return false; }
+});
+if (import.meta?.env?.VITE_DEBUG_ENV === '1') {
+  const env = import.meta?.env || {};
+  const redact = (v) => v ? String(v).slice(0,4)+'…('+String(v).length+')' : '—';
+  console.log('[env] boot', {
+    VITE_SQLITE_URL: redact(env.VITE_SQLITE_URL),
+    VITE_DB_WRITE_TOKEN: redact(env.VITE_DB_WRITE_TOKEN),
+    VITE_BLOB_READ_WRITE_TOKEN: redact(env.VITE_BLOB_READ_WRITE_TOKEN),
+    VITE_SQLITE_PUT_URL: redact(env.VITE_SQLITE_PUT_URL),
+    VITE_DEBUG_DB: env.VITE_DEBUG_DB,
+  });
 }
 </script>
 <style>

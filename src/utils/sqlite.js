@@ -250,25 +250,33 @@ export async function loadRemoteDB(url){
 // Remote write (PUT)
 export function getDBBytes(){ if (!db) throw new Error('DB not initialized'); return db.export(); }
 export async function pushRemoteDB(url){
-  const target = url || import.meta?.env?.VITE_SQLITE_PUT_URL || '/api/db/update';
+  const baseTarget = url || import.meta?.env?.VITE_SQLITE_PUT_URL || '/api/db/update';
+  const debug = import.meta?.env?.VITE_DEBUG_DB === '1';
+  const target = debug ? (baseTarget + (baseTarget.includes('?') ? '&' : '?') + 'debug=1') : baseTarget;
   const bytes = getDBBytes();
   const headers = { 'Content-Type': 'application/octet-stream' };
   const rawToken = import.meta?.env?.VITE_DB_WRITE_TOKEN || import.meta?.env?.VITE_BLOB_READ_WRITE_TOKEN || '';
-  const debug = import.meta?.env?.VITE_DEBUG_DB === '1';
   let normalizedToken = rawToken;
   if (rawToken) normalizedToken = /^Bearer\s+/i.test(rawToken) ? rawToken.replace(/^Bearer\s+/i,'').trim() : rawToken.trim();
   if (rawToken) headers.Authorization = `Bearer ${normalizedToken}`;
-  if (debug) console.log('[pushRemoteDB] start', { target, tokenPresent: !!rawToken, authHeader: headers.Authorization?.slice(0,30)+'…', bytes: bytes.length });
+  if (debug) {
+    console.log('[pushRemoteDB] start', { target, tokenPresent: !!rawToken, authHeader: headers.Authorization?.slice(0,30)+'…', bytes: bytes.length });
+    try {
+      const metaRes = await fetch(baseTarget + (baseTarget.includes('?') ? '&' : '?') + 'debug=1');
+      const metaTxt = await metaRes.text();
+      console.log('[pushRemoteDB] server debug meta', { status: metaRes.status, body: metaTxt.slice(0,400) });
+    } catch (e) { console.log('[pushRemoteDB] server debug meta fetch failed', e?.message||String(e)); }
+  }
   const t0 = performance.now();
   const res = await fetch(target, { method: 'PUT', headers, body: bytes });
   const dt = +(performance.now() - t0).toFixed(1);
   let txt = ''; try { txt = await res.text(); } catch {}
   if (!res.ok) {
-    if (debug) console.log('[pushRemoteDB] failure detail', { status: res.status, elapsedMs: dt, bodyPreview: txt.slice(0,200) });
+    if (debug) console.log('[pushRemoteDB] failure detail', { status: res.status, elapsedMs: dt, bodyPreview: txt.slice(0,400) });
     else console.warn('[pushRemoteDB] failed', { status: res.status, target });
   } else if (debug) {
     let parsed; try { parsed = JSON.parse(txt); } catch {}
-    console.log('[pushRemoteDB] success', { status: res.status, elapsedMs: dt, response: parsed||txt.slice(0,120) });
+    console.log('[pushRemoteDB] success', { status: res.status, elapsedMs: dt, response: parsed||txt.slice(0,200) });
   }
   return { ok: res.ok, status: res.status };
 }
