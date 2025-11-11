@@ -39,3 +39,6 @@ scripts/*.sql
 
 # Ignore the entire scripts/ directory to prevent future commits of migration dumps and samples.
 scripts/
+
+# JetBrains IDE metadata (Copilot settings, etc.)
+.idea/
