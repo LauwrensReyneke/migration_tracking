@@ -26,7 +26,7 @@
           <button @click="clearFilters" class="text-sm px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 shadow-sm">Clear</button>
         </div>
         <!-- Chips always visible -->
-        <div class="ml-auto flex items-center gap-2">
+        <div class="flex items-center gap-2">
           <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-emerald-50 text-emerald-600 text-xs font-medium border border-emerald-200">{{ activeCount }} Active</span>
           <span v-if="overdueCount > 0" class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-rose-50 text-rose-600 text-xs font-medium border border-rose-200">{{ overdueCount }} Overdue</span>
         </div>

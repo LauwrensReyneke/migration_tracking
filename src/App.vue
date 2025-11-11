@@ -61,8 +61,8 @@
             <button @click="sidebarOpen = true" class="md:hidden p-2 rounded hover:bg-slate-100 border border-slate-200 text-slate-700" aria-label="Open menu">☰</button>
             <h2 class="flex-1 min-w-0 text-base md:text-lg font-semibold text-slate-900 truncate">{{ pageTitle }}</h2>
             <!-- Actions wrapper: constrain width & allow internal scroll without causing page overflow -->
-            <div class="relative flex items-center gap-2 shrink min-w-0 max-w-[55%] md:max-w-[40%]">
-              <div id="header-actions" class="flex items-center gap-2 overflow-x-auto overflow-y-hidden whitespace-nowrap py-1 h-10 pr-2 no-scrollbar min-w-0 max-w-full"></div>
+            <div class="relative flex-none flex items-center gap-2 min-w-0 max-w-[55%] md:max-w-[40%] overflow-hidden">
+              <div id="header-actions" role="presentation" class="header-actions-scroll flex items-center gap-2 overflow-x-auto whitespace-nowrap py-1 h-10 pr-2 no-scrollbar w-full"></div>
             </div>
           </div>
         </header>
@@ -137,4 +137,5 @@ if (import.meta?.env?.VITE_DEBUG_ENV === '1') {
 .fade-fast-enter-from,.fade-fast-leave-to{ opacity: 0; }
 .no-scrollbar::-webkit-scrollbar{ display:none; }
 .no-scrollbar{ -ms-overflow-style:none; scrollbar-width:none; }
+.header-actions-scroll{ overscroll-behavior-x:contain; contain:layout paint; max-width:100%; }
 </style>

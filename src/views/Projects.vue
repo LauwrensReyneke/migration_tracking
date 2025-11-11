@@ -27,7 +27,6 @@
           </select>
           <label class="text-xs font-medium select-none text-slate-600"><input type="checkbox" v-model="filters.onlyActive" class="mr-1 align-middle accent-blue-600"> Active only</label>
           <button @click="clearFilters" class="text-sm px-3 py-1.5 rounded-lg bg-white hover:bg-slate-50 border border-slate-300 shadow-sm">Clear</button>
-          <div class="ml-auto"></div>
           <button @click="openAddModal" class="inline-flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white text-sm px-3 py-1.5 rounded-lg shadow-sm">
             <PlusIcon class="w-4 h-4" />
             <span>Add</span>

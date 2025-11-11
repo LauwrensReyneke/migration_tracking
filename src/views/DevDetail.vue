@@ -1,7 +1,7 @@
 <template>
   <div class="max-w-7xl mx-auto p-6 space-y-8" v-if="validDev">
     <Teleport to="#header-actions">
-      <div class="flex items-center gap-2 w-full">
+      <div class="flex items-center gap-2 min-w-0">
         <div class="hidden sm:flex items-center gap-2">
           <label class="text-[11px] text-slate-600">Type</label>
           <select v-model="typeFilter" class="border rounded px-2 py-1 text-xs">
