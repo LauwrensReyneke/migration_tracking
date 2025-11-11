@@ -10,13 +10,13 @@
         <div v-if="sidebarOpen" class="fixed inset-0 z-40 md:hidden">
           <div class="absolute inset-0 bg-black/30" @click="sidebarOpen = false"></div>
           <aside class="absolute inset-y-0 left-0 w-72 bg-white shadow-xl border-r border-slate-200 flex flex-col">
-            <div class="h-14 px-4 flex items-center justify-between border-b border-slate-200">
+            <div class="relative h-14 px-4 flex items-center justify-center bg-black border-b border-black">
               <h1 class="font-semibold text-lg text-slate-900">
                 <RouterLink to="/" class="inline-flex items-center">
                   <img src="/R-E-D_Logo.webp" alt="R-E-D Logo" class="h-6 w-auto" loading="eager" decoding="async" />
                 </RouterLink>
               </h1>
-              <button @click="sidebarOpen = false" class="p-2 rounded hover:bg-slate-50" aria-label="Close menu">✕</button>
+              <button @click="sidebarOpen = false" class="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded hover:bg-white/10 text-white" aria-label="Close menu">✕</button>
             </div>
             <nav class="p-3 space-y-1 text-sm">
               <RouterLink v-for="item in nav" :key="item.to" :to="item.to"
@@ -36,7 +36,7 @@
 
       <!-- Static sidebar for md+ (fixed) -->
       <aside class="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col bg-white/80 backdrop-blur border-r border-slate-200/80 shadow-sm overflow-y-auto">
-        <div class="h-14 px-4 flex items-center border-b border-slate-200/80">
+        <div class="h-14 px-4 flex items-center justify-center bg-black border-b border-black">
           <h1 class="font-semibold text-lg text-slate-900">
             <RouterLink to="/" class="inline-flex items-center">
               <img src="/R-E-D_Logo.webp" alt="R-E-D Logo" class="h-6 w-auto" loading="eager" decoding="async" />
@@ -107,7 +107,7 @@ watch(() => route.fullPath, () => { sidebarOpen.value = false; });
 
 const pageTitle = computed(() => {
   switch(route.name){
-    case 'dashboard': return 'Reach, Engage, Develop Migration Dashboard';
+    case 'dashboard': return 'Dashboard';
     case 'projects': return 'Projects';
     case 'developers': return 'Developers';
     case 'timeline': return 'Timeline';
