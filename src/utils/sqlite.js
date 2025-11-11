@@ -154,9 +154,23 @@ export async function resetDB(){
 // --- Auth API on top of SQLite ---
 export async function getUserCount(){
   if (!db) await initDB();
-  const res = db.exec('SELECT COUNT(*) as c FROM users');
-  if (res[0] && res[0].values[0]) return Number(res[0].values[0][0]);
-  return 0;
+  try {
+    const res = db.exec('SELECT COUNT(*) as c FROM users');
+    if (res[0] && res[0].values[0]) return Number(res[0].values[0][0]);
+    return 0;
+  } catch (e) {
+    // Table might not exist in an older blob; ensure schema then return 0 so bootstrap path activates.
+    console.warn('[getUserCount] failed, ensuring users table then returning 0', e?.message||String(e));
+    try { db.exec(`CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      salt TEXT NOT NULL,
+      iterations INTEGER NOT NULL DEFAULT 100000,
+      created_at TEXT NOT NULL
+    );`); } catch {}
+    return 0;
+  }
 }
 
 export async function createUser(username, password, iterations = 100000){
