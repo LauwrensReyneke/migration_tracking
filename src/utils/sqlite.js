@@ -173,6 +173,58 @@ export async function getUserCount(){
   }
 }
 
+export async function userExists(username){
+  if (!db) await initDB();
+  const u = String(username || '').trim();
+  if (!u) return false;
+  try {
+    const res = db.exec(`SELECT 1 FROM users WHERE username = $u LIMIT 1`, { $u: u });
+    return !!(res[0] && res[0].values && res[0].values[0]);
+  } catch (e) {
+    // Ensure users table exists and treat as not existing
+    try { db.exec(`CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      salt TEXT NOT NULL,
+      iterations INTEGER NOT NULL DEFAULT 100000,
+      created_at TEXT NOT NULL
+    );`); } catch {}
+    return false;
+  }
+}
+
+export async function listUsernames(){
+  if (!db) await initDB();
+  try {
+    const res = db.exec('SELECT username FROM users ORDER BY username ASC');
+    if (!res[0]) return [];
+    return res[0].values.map(r => String(r[0]));
+  } catch (e) {
+    // If table missing, return empty list
+    return [];
+  }
+}
+
+export async function resetUsers(){
+  if (!db) await initDB();
+  try {
+    db.exec('DELETE FROM users');
+  } catch (e) {
+    // If users table missing, create it empty
+    try { db.exec(`CREATE TABLE IF NOT EXISTS users (
+      id INTEGER PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      salt TEXT NOT NULL,
+      iterations INTEGER NOT NULL DEFAULT 100000,
+      created_at TEXT NOT NULL
+    );`); } catch {}
+  }
+  await pushRemoteDB();
+  return true;
+}
+
 export async function createUser(username, password, iterations = 100000){
   if (!db) await initDB();
   const u = String(username || '').trim();

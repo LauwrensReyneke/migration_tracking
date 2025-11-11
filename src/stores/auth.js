@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { initDB, getUserCount, createUser, verifyLogin } from '../utils/sqlite';
+import { initDB, getUserCount, createUser, verifyLogin, userExists } from '../utils/sqlite';
 
 const SESSION_KEY = 'mt_auth_session_v1';
 
@@ -20,14 +20,16 @@ export const useAuthStore = defineStore('auth', {
         await initDB();
         const count = await getUserCount();
         this.needsBootstrapUser = count === 0;
-        // Restore session if present
+        // Restore session if present, but only if username exists in DB
         try {
           const raw = typeof localStorage !== 'undefined' ? localStorage.getItem(SESSION_KEY) : null;
           if (raw) {
             const sess = JSON.parse(raw);
-            if (sess && sess.username) {
+            if (sess && sess.username && await userExists(sess.username)) {
               this.loggedIn = true;
               this.username = String(sess.username);
+            } else {
+              if (typeof localStorage !== 'undefined') localStorage.removeItem(SESSION_KEY);
             }
           }
         } catch {}
