@@ -11,7 +11,11 @@
           <div class="absolute inset-0 bg-black/30" @click="sidebarOpen = false"></div>
           <aside class="absolute inset-y-0 left-0 w-72 bg-white shadow-xl border-r border-slate-200 flex flex-col">
             <div class="h-14 px-4 flex items-center justify-between border-b border-slate-200">
-              <h1 class="font-semibold text-lg text-slate-900">Bob Sites</h1>
+              <h1 class="font-semibold text-lg text-slate-900">
+                <RouterLink to="/" class="inline-flex items-center">
+                  <img src="/R-E-D_Logo.webp" alt="R-E-D Logo" class="h-6 w-auto" loading="eager" decoding="async" />
+                </RouterLink>
+              </h1>
               <button @click="sidebarOpen = false" class="p-2 rounded hover:bg-slate-50" aria-label="Close menu">✕</button>
             </div>
             <nav class="p-3 space-y-1 text-sm">
@@ -33,7 +37,11 @@
       <!-- Static sidebar for md+ (fixed) -->
       <aside class="hidden md:flex fixed inset-y-0 left-0 w-64 flex-col bg-white/80 backdrop-blur border-r border-slate-200/80 shadow-sm overflow-y-auto">
         <div class="h-14 px-4 flex items-center border-b border-slate-200/80">
-          <h1 class="font-semibold text-lg text-slate-900">Bob Sites</h1>
+          <h1 class="font-semibold text-lg text-slate-900">
+            <RouterLink to="/" class="inline-flex items-center">
+              <img src="/R-E-D_Logo.webp" alt="R-E-D Logo" class="h-6 w-auto" loading="eager" decoding="async" />
+            </RouterLink>
+          </h1>
         </div>
         <nav class="p-3 space-y-1 text-sm">
           <RouterLink v-for="item in nav" :key="item.to" :to="item.to"
@@ -88,7 +96,7 @@ const router = useRouter();
 
 const sidebarOpen = ref(false);
 const nav = [
-  { to: '/', label: 'Dashboard' },
+  { to: '/', label: 'Migration Dashboard' },
   { to: '/projects', label: 'Projects' },
   { to: '/developers', label: 'Developers' },
   { to: '/timeline', label: 'Timeline' },
@@ -99,7 +107,7 @@ watch(() => route.fullPath, () => { sidebarOpen.value = false; });
 
 const pageTitle = computed(() => {
   switch(route.name){
-    case 'dashboard': return 'Dashboard';
+    case 'dashboard': return 'Reach, Engage, Develop Migration Dashboard';
     case 'projects': return 'Projects';
     case 'developers': return 'Developers';
     case 'timeline': return 'Timeline';
@@ -108,6 +116,8 @@ const pageTitle = computed(() => {
     default: return 'Bob Sites';
   }
 });
+// Sync document.title with site title + page title
+watch(pageTitle, (t) => { if (t) document.title = `Bob Sites — ${t}`; }, { immediate: true });
 
 const showSparklines = useStorage('pref_show_sparklines', true);
 
