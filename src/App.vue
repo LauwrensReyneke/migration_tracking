@@ -57,12 +57,15 @@
       <div class="flex-1 flex flex-col min-w-0 md:ml-64">
         <!-- Top bar -->
         <header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200/80 shadow-sm overflow-hidden">
-          <div class="px-4 h-14 flex items-center gap-3 w-full max-w-full overflow-x-hidden">
-            <button @click="sidebarOpen = true" class="md:hidden p-2 rounded hover:bg-slate-100 border border-slate-200 text-slate-700" aria-label="Open menu">☰</button>
-            <h2 class="shrink-0 max-w-[35%] md:max-w-[30%] text-base md:text-lg font-semibold text-slate-900 truncate">{{ pageTitle }}</h2>
-            <!-- Actions wrapper takes remaining space and can scroll horizontally -->
-            <div class="relative flex-1 min-w-0 overflow-x-auto">
-              <div id="header-actions" class="inline-flex items-center gap-2 whitespace-nowrap py-1 h-10 pr-2 w-max"></div>
+          <div class="px-4 h-14 flex items-center justify-between gap-3 w-full max-w-full overflow-x-hidden">
+            <!-- Left group: hamburger (mobile) + title -->
+            <div class="flex items-center gap-2 min-w-0">
+              <button @click="sidebarOpen = true" class="md:hidden p-2 rounded hover:bg-slate-100 border border-slate-200 text-slate-700" aria-label="Open menu">☰</button>
+              <h2 class="text-base md:text-lg font-semibold text-slate-900 truncate min-w-0 max-w-[65vw] md:max-w-[40vw]">{{ pageTitle }}</h2>
+            </div>
+            <!-- Right group: actions in a capped, scrollable container -->
+            <div class="min-w-0 max-w-[60%] md:max-w-[50%]">
+              <div id="header-actions" class="flex items-center gap-2 overflow-x-auto whitespace-nowrap h-10 py-1 pr-2"></div>
             </div>
           </div>
         </header>
@@ -108,11 +111,11 @@ const pageTitle = computed(() => {
     case 'timeline': return 'Timeline';
     case 'devDetail': return `Developer: ${route.params.dev}`;
     case 'login': return 'Login';
-    default: return 'Bob Sites';
+    default: return 'R-E-D | Migration Tracking';
   }
 });
 // Sync document.title with site title + page title
-watch(pageTitle, (t) => { if (t) document.title = `Bob Sites — ${t}`; }, { immediate: true });
+watch(pageTitle, (t) => { if (t) document.title = `R-E-D | Migration Tracking | ${t}`; }, { immediate: true });
 
 function logout(){
   auth.logout();
