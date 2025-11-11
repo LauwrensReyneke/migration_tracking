@@ -56,17 +56,15 @@
       <!-- Main column -->
       <div class="flex-1 flex flex-col min-w-0 md:ml-64">
         <!-- Top bar -->
-        <header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200/80 shadow-sm overflow-hidden">
-          <div class="px-4 h-14 flex items-center justify-between gap-3 w-full max-w-full overflow-x-hidden">
+        <header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200/80 shadow-sm">
+          <div class="px-4 min-h-14 flex items-center justify-between gap-4 w-full">
             <!-- Left group: hamburger (mobile) + title -->
             <div class="flex items-center gap-2 min-w-0">
               <button @click="sidebarOpen = true" class="md:hidden p-2 rounded hover:bg-slate-100 border border-slate-200 text-slate-700" aria-label="Open menu">☰</button>
               <h2 class="text-base md:text-lg font-semibold text-slate-900 truncate min-w-0 max-w-[65vw] md:max-w-[40vw]">{{ pageTitle }}</h2>
             </div>
-            <!-- Right group: actions in a capped, scrollable container -->
-            <div class="min-w-0 max-w-[60%] md:max-w-[50%]">
-              <div id="header-actions" class="flex items-center gap-2 overflow-x-auto whitespace-nowrap h-10 py-1 pr-2"></div>
-            </div>
+            <!-- Right: actions grow to fill remaining space, right-aligned -->
+            <div id="header-actions" class="flex flex-1 justify-end items-center gap-2 flex-wrap min-w-0"></div>
           </div>
         </header>
 
