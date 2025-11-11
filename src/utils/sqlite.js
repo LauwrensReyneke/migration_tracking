@@ -269,8 +269,15 @@ export async function loadRemoteDB(url){
   const resolved = url || '/api/db';
   console.log('[loadRemoteDB] fetching remote DB', { url: resolved });
 
+  const buildHeaders = () => {
+    const h = {};
+    const key = import.meta?.env?.VITE_DB_API_KEY || '';
+    if (key) h['x-api-key'] = key;
+    return h;
+  };
+
   const tryFetch = async (u) => {
-    const res = await fetch(u, { cache: 'no-store' });
+    const res = await fetch(u, { cache: 'no-store', headers: buildHeaders() });
     const ct = res.headers?.get?.('content-type') || 'unknown';
     const ab = res.ok ? await res.arrayBuffer() : null;
     const len = ab ? ab.byteLength : 0;
@@ -297,7 +304,9 @@ export async function loadRemoteDB(url){
   }
 
   if (!first.res?.ok) {
-    console.warn('[loadRemoteDB] fetch failed', { status: first.res?.status, statusText: first.res?.statusText, contentType: first.ct });
+    let body = '';
+    try { body = await first.res.text(); } catch {}
+    console.warn('[loadRemoteDB] fetch failed', { status: first.res?.status, statusText: first.res?.statusText, contentType: first.ct, body });
     throw new Error(`Failed to load database from ${resolved} (status ${first.res?.status||'n/a'})`);
   }
   if (!first.len) {
@@ -320,7 +329,10 @@ export async function pushRemoteDB(url){
   console.log('[pushRemoteDB] putting bytes', { target, bytes: bytes.length });
   let res;
   try {
-    res = await fetch(target, { method:'PUT', headers:{ 'Content-Type':'application/octet-stream' }, body: bytes });
+    const headers = { 'Content-Type':'application/octet-stream' };
+    const key = import.meta?.env?.VITE_DB_API_KEY || '';
+    if (key) headers['x-api-key'] = key;
+    res = await fetch(target, { method:'PUT', headers, body: bytes });
   } catch (e) {
     console.error('[pushRemoteDB] network error', { target, error: String(e?.message||e) });
     throw e;
