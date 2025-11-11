@@ -253,12 +253,21 @@ export async function pushRemoteDB(url){
   const target = url || import.meta?.env?.VITE_SQLITE_PUT_URL || '/api/db/update';
   const bytes = getDBBytes();
   const headers = { 'Content-Type': 'application/octet-stream' };
-  const token = import.meta?.env?.VITE_DB_WRITE_TOKEN || import.meta?.env?.VITE_BLOB_READ_WRITE_TOKEN;
-  if (token) headers.Authorization = `Bearer ${token}`;
+  const rawToken = import.meta?.env?.VITE_DB_WRITE_TOKEN || import.meta?.env?.VITE_BLOB_READ_WRITE_TOKEN || '';
+  if (rawToken) {
+    // Normalize: if user already prepended Bearer, keep as-is; else add it.
+    headers.Authorization = /^Bearer\s+/i.test(rawToken) ? rawToken : `Bearer ${rawToken}`;
+  }
   const res = await fetch(target, { method: 'PUT', headers, body: bytes });
   if (!res.ok) {
-    const txt = await res.text().catch(()=> '');
-    console.warn('[pushRemoteDB] failed', { status: res.status, target, body: txt.slice(0,200) });
+    let txt = '';
+    try { txt = await res.text(); } catch {}
+    // Dev-only debug output
+    if (typeof window !== 'undefined' && /localhost|127\.0\.0\.1/.test(window.location.host)) {
+      console.warn('[pushRemoteDB] failed', { status: res.status, target, body: txt.slice(0,200), sentAuthPrefix: headers.Authorization?.slice(0,20) });
+    } else {
+      console.warn('[pushRemoteDB] failed', { status: res.status, target });
+    }
   }
   return { ok: res.ok, status: res.status };
 }

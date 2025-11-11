@@ -14,37 +14,31 @@ import { put, head } from '@vercel/blob';
 
 export default async function handler(req, res) {
   const method = req.method.toUpperCase();
-  const writeToken = process.env.DB_WRITE_TOKEN || process.env.BLOB_READ_WRITE_TOKEN || '';
+  const rawDb = (process.env.DB_WRITE_TOKEN || '').toString();
+  const rawBlob = (process.env.BLOB_READ_WRITE_TOKEN || '').toString();
+  const normalize = (s) => {
+    const t = (s || '').toString().trim().replace(/^['"]|['"]$/g, '');
+    return /^Bearer\s+/i.test(t) ? t.replace(/^Bearer\s+/i, '').trim() : t;
+  };
+  const candidatesRaw = [rawDb, rawBlob].filter(Boolean);
+  const candidates = candidatesRaw.map(normalize).filter(Boolean);
   const blobName = 'migration_tracking.sqlite';
 
   if (method === 'GET') {
-    // Provide meta info + existence check
     let exists = false; let size = 0; let url = null;
-    try {
-      // head() throws if not found
-      const meta = await head(blobName);
-      if (meta) { exists = true; size = meta.size || 0; url = meta.url || null; }
-    } catch {}
-    res.status(200).json({ ok: true, blob: { name: blobName, exists, size, url }, writeProtected: !!writeToken });
+    try { const meta = await head(blobName); if (meta) { exists = true; size = meta.size || 0; url = meta.url || null; } } catch {}
+    res.status(200).json({ ok: true, blob: { name: blobName, exists, size, url }, writeProtected: candidates.length > 0 });
     return;
   }
 
-  if (method !== 'PUT') {
-    res.status(405).json({ error: 'Method Not Allowed' });
-    return;
-  }
+  if (method !== 'PUT') { res.status(405).json({ error: 'Method Not Allowed' }); return; }
 
-  if (!writeToken) {
-    res.status(403).json({ error: 'Writes disabled: set DB_WRITE_TOKEN' });
-    return;
-  }
+  if (candidates.length === 0) { res.status(403).json({ error: 'Writes disabled: set DB_WRITE_TOKEN or BLOB_READ_WRITE_TOKEN' }); return; }
 
-  const authHeader = (req.headers['authorization'] || '').toString().trim();
-  const provided = authHeader.replace(/^Bearer\s+/i, '').replace(/^['"]|['"]$/g, '');
-  if (provided !== writeToken) {
-    res.status(401).json({ error: 'Unauthorized' });
-    return;
-  }
+  const rawHeader = (req.headers['authorization'] || '').toString();
+  const presented = normalize(rawHeader);
+  const okAuth = candidates.some(tok => tok && tok === presented);
+  if (!okAuth) { res.status(401).json({ error: 'Unauthorized' }); return; }
 
   try {
     const chunks = []; for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
