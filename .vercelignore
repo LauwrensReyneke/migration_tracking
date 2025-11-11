@@ -1,0 +1,6 @@
+# Ignore client build artifacts in Vercel if any
+node_modules/
+dist/
+.DS_Store
+.idea/
+

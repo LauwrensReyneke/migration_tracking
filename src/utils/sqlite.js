@@ -3,6 +3,7 @@ import wasmUrl from 'sql.js/dist/sql-wasm.wasm?url';
 
 let SQL = null;
 let db = null;
+let initPromise = null;
 
 function bytesToBase64(bytes){
   let binary = '';
@@ -30,42 +31,46 @@ function b64ToBytes(b){ return base64ToBytes(b); }
 
 export async function initDB(){
   if (db) return db;
-  if (!SQL) SQL = await initSqlJs({ locateFile: () => wasmUrl });
-  const remoteUrl = import.meta?.env?.VITE_SQLITE_URL || '/api/db';
-  try {
-    console.log('[initDB] loading remote DB', remoteUrl);
-    await loadRemoteDB(remoteUrl);
-    console.log('[initDB] remote load OK');
-  } catch (e) {
-    console.warn('[initDB] remote load failed; using empty DB', e?.message||String(e));
-    db = new SQL.Database();
-  }
-  db.exec(`PRAGMA foreign_keys = ON;`);
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS devs (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, wip_limit INTEGER);
-    CREATE TABLE IF NOT EXISTS projects (
-      id INTEGER PRIMARY KEY,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL CHECK (type IN ('migration','newbuild')),
-      stage TEXT NOT NULL CHECK (stage IN ('planning','template_build','review','final_updates','production','canceled')),
-      created_at TEXT NOT NULL,
-      started_at TEXT NULL,
-      completed_at TEXT NULL,
-      target_days INTEGER NOT NULL,
-      assigned_dev_id INTEGER NOT NULL,
-      FOREIGN KEY (assigned_dev_id) REFERENCES devs(id) ON UPDATE CASCADE
-    );
-    CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
-    CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      salt TEXT NOT NULL,
-      iterations INTEGER NOT NULL DEFAULT 100000,
-      created_at TEXT NOT NULL
-    );
-  `);
-  return db;
+  if (initPromise) return initPromise;
+  initPromise = (async () => {
+    if (!SQL) SQL = await initSqlJs({ locateFile: () => wasmUrl });
+    const remoteUrl = import.meta?.env?.VITE_SQLITE_URL || '/api/db';
+    try {
+      console.log('[initDB] loading remote DB', remoteUrl);
+      await loadRemoteDB(remoteUrl);
+      console.log('[initDB] remote load OK');
+    } catch (e) {
+      console.warn('[initDB] remote load failed; using empty DB', e?.message||String(e));
+      db = new SQL.Database();
+    }
+    db.exec(`PRAGMA foreign_keys = ON;`);
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS devs (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, wip_limit INTEGER);
+      CREATE TABLE IF NOT EXISTS projects (
+        id INTEGER PRIMARY KEY,
+        name TEXT NOT NULL,
+        type TEXT NOT NULL CHECK (type IN ('migration','newbuild')),
+        stage TEXT NOT NULL CHECK (stage IN ('planning','template_build','review','final_updates','production','canceled')),
+        created_at TEXT NOT NULL,
+        started_at TEXT NULL,
+        completed_at TEXT NULL,
+        target_days INTEGER NOT NULL,
+        assigned_dev_id INTEGER NOT NULL,
+        FOREIGN KEY (assigned_dev_id) REFERENCES devs(id) ON UPDATE CASCADE
+      );
+      CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+      CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY,
+        username TEXT NOT NULL UNIQUE,
+        password_hash TEXT NOT NULL,
+        salt TEXT NOT NULL,
+        iterations INTEGER NOT NULL DEFAULT 100000,
+        created_at TEXT NOT NULL
+      );
+    `);
+    return db;
+  })();
+  return initPromise;
 }
 
 export async function readSnapshot(){
@@ -195,7 +200,8 @@ export async function verifyLogin(username, password){
 // Load a remote SQLite database file (arraybuffer)
 export async function loadRemoteDB(url){
   if (!SQL) SQL = await initSqlJs({ locateFile: () => wasmUrl });
-  console.log('[loadRemoteDB] fetching remote DB', { url });
+  const resolved = url || '/api/db';
+  console.log('[loadRemoteDB] fetching remote DB', { url: resolved });
 
   const tryFetch = async (u) => {
     const res = await fetch(u, { cache: 'no-store' });
@@ -213,21 +219,20 @@ export async function loadRemoteDB(url){
     } catch { return u + (u.includes('?') ? '&' : '?') + 'download=1'; }
   };
 
-  let first = await tryFetch(url);
+  let first = await tryFetch(resolved);
   let attempt = 1;
 
-  // If first fetch has unexpected type or is empty, try again with ?download=1
   if (first.res?.ok && (/text\/html|application\/json/i.test(first.ct) || first.len === 0)) {
-    const alt = addDownloadParam(url);
+    const alt = addDownloadParam(resolved);
     console.warn('[loadRemoteDB] unexpected response; retrying with download=1', { contentType: first.ct, len: first.len, alt });
     const second = await tryFetch(alt);
-    if (second.res?.ok && second.len > 0) first = second; // use the better result
+    if (second.res?.ok && second.len > 0) first = second;
     attempt = 2;
   }
 
   if (!first.res?.ok) {
     console.warn('[loadRemoteDB] fetch failed', { status: first.res?.status, statusText: first.res?.statusText, contentType: first.ct });
-    throw new Error(`Failed to load database from ${url} (status ${first.res?.status||'n/a'})`);
+    throw new Error(`Failed to load database from ${resolved} (status ${first.res?.status||'n/a'})`);
   }
   if (!first.len) {
     console.warn('[loadRemoteDB] remote bytes empty after attempts', { attempts: attempt, contentType: first.ct });
@@ -246,7 +251,20 @@ export function getDBBytes(){ if (!db) throw new Error('DB not initialized'); re
 export async function pushRemoteDB(url){
   const target = url || '/api/db';
   const bytes = getDBBytes();
-  const res = await fetch(target, { method:'PUT', headers:{ 'Content-Type':'application/octet-stream' }, body: bytes });
-  if (!res.ok) console.warn('[pushRemoteDB] failed', { status: res.status });
+  console.log('[pushRemoteDB] putting bytes', { target, bytes: bytes.length });
+  let res;
+  try {
+    res = await fetch(target, { method:'PUT', headers:{ 'Content-Type':'application/octet-stream' }, body: bytes });
+  } catch (e) {
+    console.error('[pushRemoteDB] network error', { target, error: String(e?.message||e) });
+    throw e;
+  }
+  if (!res.ok) {
+    let body = '';
+    try { body = await res.text(); } catch {}
+    console.warn('[pushRemoteDB] failed', { status: res.status, target, body });
+  } else {
+    console.log('[pushRemoteDB] success', { status: res.status, target });
+  }
   return { ok: res.ok, status: res.status };
 }

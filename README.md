@@ -10,25 +10,22 @@ Reads (client init):
 - If it is not set, the client starts with an empty DB (and may seed via `seed.sql`).
 
 Writes (snapshot changes, user creation, script import):
-- Client code calls `pushRemoteDB()` which PUTs the binary to `/api/db/update` with a Bearer token.
-- On Vercel, `/api/db/update` is the serverless function in `api/db/update.js` that writes to Blob Storage.
-- (Local dev note) Without a local handler for `/api/db/update`, writes will 404. If you need local persistence during development, add a dev server stub or temporarily deploy.
+- Client calls `pushRemoteDB()` which PUTs the binary to `/api/db` with no client auth; the serverless function writes to Vercel Blob using its server-side token.
 
 ## Environment Variables
-Set these in Vercel (and optionally a local `.env` for development):
+Set these in Vercel:
 
-- `DB_WRITE_TOKEN` (server env): Required for production writes. Choose a secret string.
-- `VITE_DB_WRITE_TOKEN` (client env): Only set if you intentionally allow client-origin writes. Omit to block client writes.
-- `VITE_SQLITE_URL`: Public blob URL after first successful upload, e.g. `https://<project>.public.blob.vercel-storage.com/migration_tracking.sqlite`.
+- Server env: `BLOB_READ_WRITE_TOKEN` (provided by Vercel Blob; required for writes in `/api/db`).
+- Optional client env: `VITE_SQLITE_URL` (public blob URL if you want to hardcode fetch-from-blob; otherwise the client GETs `/api/db`).
 
-Deprecated / Removed (do not use anymore):
-- `VITE_SQLITE_PUT_URL`, `VITE_SQLITE_PUT_METHOD`, `VITE_SQLITE_PUT_HEADERS`, `VITE_SQLITE_PUT_AUTH`, `VITE_BLOB_READ_WRITE_TOKEN`.
+Deprecated / Removed (do not use):
+- `VITE_SQLITE_PUT_URL`, `VITE_DB_WRITE_TOKEN`, `DB_WRITE_TOKEN`, `VITE_BLOB_READ_WRITE_TOKEN`, and any custom relay/update endpoints.
 
 ## First-Time Blob Initialization
-1. Deploy without `VITE_SQLITE_URL` so the app starts empty.
-2. Perform an action that triggers a write (e.g. create first user or project) – this PUTs to `/api/db/update`.
-3. GET `/api/db/update` to retrieve metadata; the response includes the stored blob `url`.
-4. Set that URL as `VITE_SQLITE_URL` in project settings and redeploy. Future clients load directly from Blob.
+1. Deploy. The app will load via `/api/db` GET which proxies current blob if present; if not, it starts empty.
+2. Perform an action that triggers a write (e.g., create first user or project) – this PUTs to `/api/db`.
+   - Note: If there are no users, both the explicit "Create Admin & Sign in" flow and a normal "Sign in" will create the first user and write the blob.
+3. Optionally GET `/api/db?debug=1` to verify bytes served.
 
 ## Local Development
 Install and run:
@@ -36,29 +33,19 @@ Install and run:
 npm install
 npm run dev
 ```
-Optional `.env` if you want to test writes locally (will still 404 unless you add a stub):
-```
-DB_WRITE_TOKEN=devtoken123
-VITE_DB_WRITE_TOKEN=devtoken123
-```
-To enable local persistence, implement a simple stub endpoint or run a Vercel dev environment providing the function.
+No client tokens are needed. The serverless function `/api/db` handles writes using server env.
 
 ## Security Notes
-- Avoid exposing `VITE_DB_WRITE_TOKEN` if you want to restrict writes; perform controlled writes via a secure backend instead.
-- Writes without a valid Bearer token return 401/403.
+- No client-side secrets or tokens are used. All blob writes happen server-side with `BLOB_READ_WRITE_TOKEN`.
 
 ## Relevant Files
-- `src/utils/sqlite.js`: Remote load (only if URL provided) + push logic.
-- `api/db/update.js`: Blob upload function (production). GET returns metadata, PUT stores blob.
-
-## Migration From Old Setup
-Remove any references to deprecated env vars and deleted files (`sharedApi.js`, server-side `api/db.js`, `api/index.js`). Only keep the minimal variables listed above.
+- `src/utils/sqlite.js`: Remote load and push logic (targets `/api/db`).
+- `api/db/index.js`: Blob GET/PUT serverless function.
 
 ## Manual Testing
-After a change triggering a DB write:
+After a write:
 1. Check client console for `[pushRemoteDB]` logs.
-2. GET `/api/db/update` – verify JSON shows `blob.exists` and `size`.
-3. Download from `VITE_SQLITE_URL` and inspect with `sql.js` or `sqlite3`.
+2. GET `/api/db?debug=1` – verify status 200 and X-Debug-Bytes header.
 
 ## Next Improvements (Optional)
 - Add integrity hash verification (upload and compare on load).

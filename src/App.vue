@@ -124,10 +124,8 @@ if (import.meta?.env?.VITE_DEBUG_ENV === '1') {
   const redact = (v) => v ? String(v).slice(0,4)+'…('+String(v).length+')' : '—';
   console.log('[env] boot', {
     VITE_SQLITE_URL: redact(env.VITE_SQLITE_URL),
-    VITE_DB_WRITE_TOKEN: redact(env.VITE_DB_WRITE_TOKEN),
-    VITE_BLOB_READ_WRITE_TOKEN: redact(env.VITE_BLOB_READ_WRITE_TOKEN),
-    VITE_SQLITE_PUT_URL: redact(env.VITE_SQLITE_PUT_URL),
     VITE_DEBUG_DB: env.VITE_DEBUG_DB,
+    VITE_DEBUG_ENV: env.VITE_DEBUG_ENV
   });
 }
 </script>

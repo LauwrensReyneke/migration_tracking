@@ -54,6 +54,32 @@ export const useAuthStore = defineStore('auth', {
     async login(username, password){
       this.loading = true; this.error = null;
       try {
+        // If no users exist yet, treat login as first-user initialization to ensure a blob write.
+        const count = await getUserCount();
+        if (count === 0) {
+          try {
+            await createUser(username, password);
+            this.needsBootstrapUser = false;
+            this.loggedIn = true; this.username = username;
+            if (typeof localStorage !== 'undefined') localStorage.setItem(SESSION_KEY, JSON.stringify({ username }));
+            return true;
+          } catch (e) {
+            // Race condition: another client created the user just now; fallback to normal verify
+            if (String(e.message||e).toLowerCase().includes('already exists')) {
+              const okAfter = await verifyLogin(username, password);
+              if (okAfter) {
+                this.needsBootstrapUser = false;
+                this.loggedIn = true; this.username = username;
+                if (typeof localStorage !== 'undefined') localStorage.setItem(SESSION_KEY, JSON.stringify({ username }));
+                return true;
+              }
+              this.error = 'Invalid credentials';
+              return false;
+            }
+            throw e;
+          }
+        }
+
         const ok = await verifyLogin(username, password);
         if (ok){
           this.loggedIn = true; this.username = username;

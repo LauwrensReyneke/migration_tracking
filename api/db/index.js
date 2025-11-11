@@ -7,8 +7,13 @@ import { put, head } from '@vercel/blob';
 
 const BLOB_NAME = 'migration_tracking.sqlite';
 
+function wantDebug(req){
+  try { const u = new URL(req.url, 'http://localhost'); return u.searchParams.get('debug') === '1'; } catch { return false; }
+}
+
 export default async function handler(req, res){
-  const method = req.method.toUpperCase();
+  const method = (req.method||'GET').toUpperCase();
+  const debug = wantDebug(req);
 
   if (method === 'GET') {
     try {
@@ -19,6 +24,7 @@ export default async function handler(req, res){
       const ab = await resp.arrayBuffer();
       res.setHeader('Content-Type','application/octet-stream');
       res.setHeader('Content-Disposition', 'attachment; filename="migration_tracking.sqlite"');
+      if (debug) res.setHeader('X-Debug-Bytes', String(ab.byteLength));
       return res.send(Buffer.from(ab));
     } catch (e) {
       return res.status(500).json({ error: e?.message || String(e) });
@@ -27,9 +33,12 @@ export default async function handler(req, res){
 
   if (method === 'PUT') {
     try {
+      const u = new URL(req.url, 'http://localhost');
+      const dry = u.searchParams.get('dry') === '1';
       const chunks = []; for await (const c of req) chunks.push(Buffer.isBuffer(c)?c:Buffer.from(c));
       const buf = Buffer.concat(chunks);
       if (!buf.length) return res.status(400).json({ error: 'Empty body' });
+      if (dry) return res.status(200).json({ ok: true, dryRun: true, bytes: buf.length });
       const stored = await put(BLOB_NAME, buf, { access: 'public', addRandomSuffix: false, contentType: 'application/octet-stream' });
       return res.status(200).json({ ok: true, bytes: buf.length, url: stored.url });
     } catch (e) {
