@@ -66,7 +66,7 @@
             <h2 class="text-base md:text-lg font-semibold text-slate-900 truncate">{{ pageTitle }}</h2>
             <div class="ml-auto flex items-center gap-2 min-w-0">
               <!-- Teleport target for per-view header controls -->
-              <div id="header-actions" class="flex items-center gap-2 overflow-x-auto whitespace-nowrap pr-2 h-8"></div>
+              <div id="header-actions" class="flex items-center gap-2 overflow-x-auto overflow-y-visible whitespace-nowrap pr-2 h-10 py-1"></div>
             </div>
           </div>
         </header>
