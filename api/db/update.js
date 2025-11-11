@@ -12,22 +12,43 @@
 // This replaces earlier, more complex multi-token logic.
 import { put, head } from '@vercel/blob';
 
+function dbgEnabled(url){
+  try { const u = new URL(url, 'http://localhost'); if (u.searchParams.get('debug') === '1') return true; } catch {}
+  return process.env.DEBUG_VERBOSE_DB_UPDATE === '1';
+}
+function redact(tok){ if(!tok) return ''; return tok.slice(0,6)+`…(${tok.length})`; }
+
 export default async function handler(req, res) {
   const method = req.method.toUpperCase();
   const rawDb = (process.env.DB_WRITE_TOKEN || '').toString();
   const rawBlob = (process.env.BLOB_READ_WRITE_TOKEN || '').toString();
   const normalize = (s) => {
-    const t = (s || '').toString().trim().replace(/^['"]|['"]$/g, '');
-    return /^Bearer\s+/i.test(t) ? t.replace(/^Bearer\s+/i, '').trim() : t;
+    const step0 = (s || '').toString();
+    const step1 = step0.trim();
+    const step2 = step1.replace(/^['"]|['"]$/g, '');
+    const step3 = /^Bearer\s+/i.test(step2) ? step2.replace(/^Bearer\s+/i, '') : step2;
+    return step3.trim();
   };
   const candidatesRaw = [rawDb, rawBlob].filter(Boolean);
   const candidates = candidatesRaw.map(normalize).filter(Boolean);
   const blobName = 'migration_tracking.sqlite';
+  const debug = dbgEnabled(req.url);
+
+  if (debug) {
+    console.log('[db/update] init', {
+      method,
+      candidateCount: candidates.length,
+      tokens: candidatesRaw.map(t=>redact(t)),
+      normalized: candidates.map(t=>redact(t))
+    });
+  }
 
   if (method === 'GET') {
     let exists = false; let size = 0; let url = null;
     try { const meta = await head(blobName); if (meta) { exists = true; size = meta.size || 0; url = meta.url || null; } } catch {}
-    res.status(200).json({ ok: true, blob: { name: blobName, exists, size, url }, writeProtected: candidates.length > 0 });
+    const payload = { ok: true, blob: { name: blobName, exists, size, url }, writeProtected: candidates.length > 0 };
+    if (debug) payload.debug = { candidateCount: candidates.length, tokens: candidates.map(t=>redact(t)) };
+    res.status(200).json(payload);
     return;
   }
 
@@ -38,15 +59,33 @@ export default async function handler(req, res) {
   const rawHeader = (req.headers['authorization'] || '').toString();
   const presented = normalize(rawHeader);
   const okAuth = candidates.some(tok => tok && tok === presented);
-  if (!okAuth) { res.status(401).json({ error: 'Unauthorized' }); return; }
+
+  if (debug) {
+    console.log('[db/update] auth check', {
+      headerRawPrefix: rawHeader.slice(0,30),
+      presentedRedacted: redact(presented),
+      match: okAuth,
+      candidateRedacted: candidates.map(c=>redact(c))
+    });
+  }
+
+  if (!okAuth) {
+    const resp = { error: 'Unauthorized' };
+    if (debug) resp.debug = { headerRawPrefix: rawHeader.slice(0,30), presented: redact(presented), candidates: candidates.map(c=>redact(c)) };
+    res.status(401).json(resp);
+    return; }
 
   try {
     const chunks = []; for await (const chunk of req) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
     const body = Buffer.concat(chunks);
     if (!body.length) { res.status(400).json({ error: 'Empty body' }); return; }
+    if (debug) console.log('[db/update] writing blob', { bytes: body.length });
     const stored = await put(blobName, body, { access: 'public', addRandomSuffix: false, contentType: 'application/octet-stream' });
-    res.status(200).json({ ok: true, bytes: body.length, url: stored.url });
+    const out = { ok: true, bytes: body.length, url: stored.url };
+    if (debug) out.debug = { storedUrl: stored.url, size: body.length };
+    res.status(200).json(out);
   } catch (e) {
+    if (debug) console.log('[db/update] error', e);
     res.status(500).json({ error: e?.message || String(e) });
   }
 }
