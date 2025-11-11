@@ -31,23 +31,17 @@ function b64ToBytes(b){ return base64ToBytes(b); }
 export async function initDB(){
   if (db) return db;
   if (!SQL) SQL = await initSqlJs({ locateFile: () => wasmUrl });
-  // Prefer loading remote DB only if explicitly configured
-  const remoteUrl = import.meta?.env?.VITE_SQLITE_URL || null;
-  if (remoteUrl) {
-    try {
-      console.log('[initDB] attempting remote SQLite load', { url: remoteUrl });
-      await loadRemoteDB(remoteUrl);
-      console.log('[initDB] remote SQLite loaded OK');
-    } catch (e) {
-      console.warn('[initDB] remote SQLite load failed; falling back to empty DB', { url: remoteUrl, error: e?.message||String(e) });
-      db = new SQL.Database();
-    }
-  } else {
+  const remoteUrl = import.meta?.env?.VITE_SQLITE_URL || '/api/db';
+  try {
+    console.log('[initDB] loading remote DB', remoteUrl);
+    await loadRemoteDB(remoteUrl);
+    console.log('[initDB] remote load OK');
+  } catch (e) {
+    console.warn('[initDB] remote load failed; using empty DB', e?.message||String(e));
     db = new SQL.Database();
   }
-  // Ensure schema (idempotent)
+  db.exec(`PRAGMA foreign_keys = ON;`);
   db.exec(`
-    PRAGMA foreign_keys = ON;
     CREATE TABLE IF NOT EXISTS devs (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, wip_limit INTEGER);
     CREATE TABLE IF NOT EXISTS projects (
       id INTEGER PRIMARY KEY,
@@ -250,38 +244,9 @@ export async function loadRemoteDB(url){
 // Remote write (PUT)
 export function getDBBytes(){ if (!db) throw new Error('DB not initialized'); return db.export(); }
 export async function pushRemoteDB(url){
-  const baseTarget = url || import.meta?.env?.VITE_SQLITE_PUT_URL || '/api/db/update';
-  const debug = import.meta?.env?.VITE_DEBUG_DB === '1';
-  const useRelay = import.meta?.env?.VITE_USE_RELAY === '1' || !(import.meta?.env?.VITE_DB_WRITE_TOKEN || import.meta?.env?.VITE_BLOB_READ_WRITE_TOKEN);
-  const relayKey = import.meta?.env?.VITE_RELAY_WRITE_KEY || '';
-  const targetBase = useRelay ? '/api/db/relay' : baseTarget;
-  const target = debug ? (targetBase + (targetBase.includes('?') ? '&' : '?') + 'debug=1') : targetBase;
+  const target = url || '/api/db';
   const bytes = getDBBytes();
-  const headers = { 'Content-Type': 'application/octet-stream' };
-  const rawToken = import.meta?.env?.VITE_DB_WRITE_TOKEN || import.meta?.env?.VITE_BLOB_READ_WRITE_TOKEN || '';
-  if (!useRelay && rawToken) {
-    const normalizedToken = /^Bearer\s+/i.test(rawToken) ? rawToken.replace(/^Bearer\s+/i,'').trim() : rawToken.trim();
-    headers.Authorization = `Bearer ${normalizedToken}`;
-  }
-  if (useRelay && relayKey) headers['X-Relay-Key'] = relayKey;
-  if (debug) {
-    console.log('[pushRemoteDB] start', { target, mode: useRelay?'relay':'direct', tokenPresent: !!rawToken, hasRelayKey: !!relayKey, bytes: bytes.length, authHeader: headers.Authorization?.slice(0,30)+'…' });
-    try {
-      const metaRes = await fetch((useRelay?'/api/db/relay':'/api/db/update') + '?debug=1');
-      const metaTxt = await metaRes.text();
-      console.log('[pushRemoteDB] server debug meta', { mode: useRelay?'relay':'direct', status: metaRes.status, body: metaTxt.slice(0,400) });
-    } catch (e) { console.log('[pushRemoteDB] server debug meta fetch failed', e?.message||String(e)); }
-  }
-  const t0 = performance.now();
-  const res = await fetch(target, { method: 'PUT', headers, body: bytes });
-  const dt = +(performance.now() - t0).toFixed(1);
-  let txt = ''; try { txt = await res.text(); } catch {}
-  if (!res.ok) {
-    if (debug) console.log('[pushRemoteDB] failure detail', { status: res.status, elapsedMs: dt, bodyPreview: txt.slice(0,400) });
-    else console.warn('[pushRemoteDB] failed', { status: res.status, target });
-  } else if (debug) {
-    let parsed; try { parsed = JSON.parse(txt); } catch {}
-    console.log('[pushRemoteDB] success', { status: res.status, elapsedMs: dt, response: parsed||txt.slice(0,200) });
-  }
+  const res = await fetch(target, { method:'PUT', headers:{ 'Content-Type':'application/octet-stream' }, body: bytes });
+  if (!res.ok) console.warn('[pushRemoteDB] failed', { status: res.status });
   return { ok: res.ok, status: res.status };
 }
