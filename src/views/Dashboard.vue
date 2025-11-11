@@ -3,7 +3,7 @@
     <Teleport to="#header-actions">
       <div class="flex items-center gap-2">
         <DBStatus />
-        <ExportMenu />
+        <ExportMenu class="hidden" />
       </div>
     </Teleport>
 
@@ -255,7 +255,6 @@ import DevProfile from '../components/DevProfile.vue';
 import Sparkline from '../components/Sparkline.vue';
 import Tooltip from '../components/Tooltip.vue';
 import DailyThroughputChart from '../components/DailyThroughputChart.vue';
-import ExportMenu from '../components/ExportMenu.vue';
 import DBStatus from '../components/DBStatus.vue';
 import { ref, computed } from 'vue';
 import { useStorage } from '@vueuse/core'
