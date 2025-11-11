@@ -59,10 +59,10 @@
         <header class="sticky top-0 z-30 bg-white/80 backdrop-blur border-b border-slate-200/80 shadow-sm overflow-hidden">
           <div class="px-4 h-14 flex items-center gap-3 w-full max-w-full overflow-x-hidden">
             <button @click="sidebarOpen = true" class="md:hidden p-2 rounded hover:bg-slate-100 border border-slate-200 text-slate-700" aria-label="Open menu">☰</button>
-            <h2 class="flex-1 min-w-0 text-base md:text-lg font-semibold text-slate-900 truncate">{{ pageTitle }}</h2>
-            <!-- Actions wrapper: constrain width & allow internal scroll without causing page overflow -->
-            <div class="relative flex-none flex items-center gap-2 min-w-0 max-w-[55%] md:max-w-[40%] overflow-hidden">
-              <div id="header-actions" role="presentation" class="header-actions-scroll flex items-center gap-2 overflow-x-auto whitespace-nowrap py-1 h-10 pr-2 no-scrollbar w-full"></div>
+            <h2 class="shrink-0 max-w-[35%] md:max-w-[30%] text-base md:text-lg font-semibold text-slate-900 truncate">{{ pageTitle }}</h2>
+            <!-- Actions wrapper takes remaining space and can scroll horizontally -->
+            <div class="relative flex-1 min-w-0 overflow-x-auto">
+              <div id="header-actions" class="inline-flex items-center gap-2 whitespace-nowrap py-1 h-10 pr-2 w-max"></div>
             </div>
           </div>
         </header>
