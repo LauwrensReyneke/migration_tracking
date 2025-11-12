@@ -20,7 +20,7 @@
               <!-- Migration group (mobile) -->
               <div class="space-y-1">
                 <div class="flex items-center justify-between px-3 py-2 rounded-md hover:bg-slate-50">
-                  <RouterLink :to="'/'" class="flex items-center gap-2 flex-1 min-w-0 text-slate-700" active-class="!text-blue-700 font-medium">
+                  <RouterLink :to="'/'" class="flex items-center gap-2 flex-1 min-w-0 text-slate-700" exact-active-class="!text-blue-700 font-medium">
                     <Fa icon="gauge" class="h-4 w-4 text-slate-400" />
                     <span class="truncate">Migration</span>
                   </RouterLink>
@@ -66,7 +66,7 @@
           <!-- Migration group (desktop) -->
           <div class="space-y-1">
             <div class="flex items-center justify-between px-3 py-2 rounded-md hover:bg-slate-50">
-              <RouterLink :to="'/'" class="flex items-center gap-2 flex-1 min-w-0 text-slate-700" active-class="!text-blue-700 font-medium">
+              <RouterLink :to="'/'" class="flex items-center gap-2 flex-1 min-w-0 text-slate-700" exact-active-class="!text-blue-700 font-medium">
                 <Fa icon="gauge" class="h-4 w-4 text-slate-400" />
                 <span class="truncate">Migration</span>
               </RouterLink>
