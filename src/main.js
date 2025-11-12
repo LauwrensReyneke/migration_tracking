@@ -10,10 +10,10 @@ import { useAuthStore } from './stores/auth';
 // Font Awesome
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
-import { faListUl, faCircleCheck, faPercent, faCalendarDays, faGauge, faBolt, faTriangleExclamation, faUsers, faClock } from '@fortawesome/free-solid-svg-icons';
+import { faListUl, faCircleCheck, faPercent, faCalendarDays, faGauge, faBolt, faTriangleExclamation, faUsers, faClock, faFolder } from '@fortawesome/free-solid-svg-icons';
 import VueApexCharts from 'vue3-apexcharts';
 
-library.add(faListUl, faCircleCheck, faPercent, faCalendarDays, faGauge, faBolt, faTriangleExclamation, faUsers, faClock);
+library.add(faListUl, faCircleCheck, faPercent, faCalendarDays, faGauge, faBolt, faTriangleExclamation, faUsers, faClock, faFolder);
 
 (async () => {
   const app = createApp(App);
