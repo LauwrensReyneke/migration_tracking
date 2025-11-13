@@ -101,7 +101,8 @@ export default async function handler(req, res){
       const buf = Buffer.concat(chunks);
       if (!buf.length) return res.status(400).json({ error: 'Empty body' });
       if (dry) return res.status(200).json({ ok: true, dryRun: true, bytes: buf.length });
-      const stored = await put(BLOB_NAME, buf, { access: 'private', addRandomSuffix: false, contentType: 'application/octet-stream' });
+      // Vercel Blob requires the object to be public for direct fetches from the frontend.
+      const stored = await put(BLOB_NAME, buf, { access: 'public', addRandomSuffix: false, contentType: 'application/octet-stream' });
       return res.status(200).json({ ok: true, bytes: buf.length, url: stored.url });
     } catch (e) {
       return res.status(500).json({ error: e?.message || String(e) });
