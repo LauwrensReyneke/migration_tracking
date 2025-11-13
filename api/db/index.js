@@ -80,7 +80,10 @@ export default async function handler(req, res){
     try {
       const meta = await head(BLOB_NAME);
       if (!meta || !meta.url) return res.status(404).json({ error: 'Blob not found' });
-      const resp = await fetch(meta.url, { cache: 'no-store' });
+      // Attempt to force an origin fetch to avoid stale CDN edge copies.
+      let fetchUrl = meta.url;
+      if (debug) fetchUrl = meta.url + (meta.url.includes('?') ? '&' : '?') + 't=' + Date.now();
+      const resp = await fetch(fetchUrl, { cache: 'no-store', headers: { 'Cache-Control': 'no-cache' } });
       if (!resp.ok) return res.status(resp.status).json({ error: 'Fetch failed', status: resp.status });
       const ab = await resp.arrayBuffer();
       res.setHeader('Content-Type','application/octet-stream');
@@ -103,7 +106,24 @@ export default async function handler(req, res){
       if (dry) return res.status(200).json({ ok: true, dryRun: true, bytes: buf.length });
       // Vercel Blob requires the object to be public for direct fetches from the frontend.
       const stored = await put(BLOB_NAME, buf, { access: 'public', addRandomSuffix: false, contentType: 'application/octet-stream' });
-      return res.status(200).json({ ok: true, bytes: buf.length, url: stored.url });
+
+      // Some blob providers (and their CDNs) can show brief eventual-consistency or caching delays.
+      // Poll head() a few times to verify the uploaded blob's metadata (size/URL) matches the upload.
+      const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+      let attempts = 0;
+      let meta = null;
+      while (attempts < 5) {
+        try {
+          meta = await head(BLOB_NAME);
+        } catch (err) {
+          meta = null;
+        }
+        if (meta && (meta.size === undefined || meta.size === buf.length)) break; // accept if size not exposed
+        attempts++;
+        await sleep(200);
+      }
+
+      return res.status(200).json({ ok: true, bytes: buf.length, url: stored.url, verified: !!meta, attempts, meta });
     } catch (e) {
       return res.status(500).json({ error: e?.message || String(e) });
     }
