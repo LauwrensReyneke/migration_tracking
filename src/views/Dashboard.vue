@@ -3,6 +3,7 @@
     <Teleport to="#header-actions">
       <div class="flex items-center gap-2">
         <DBStatus />
+        <LocalPasteImport />
         <ExportMenu class="hidden" />
       </div>
     </Teleport>
@@ -256,6 +257,7 @@ import Sparkline from '../components/Sparkline.vue';
 import Tooltip from '../components/Tooltip.vue';
 import DailyThroughputChart from '../components/DailyThroughputChart.vue';
 import DBStatus from '../components/DBStatus.vue';
+import LocalPasteImport from '../components/LocalPasteImport.vue';
 import { ref, computed } from 'vue';
 import { useStorage } from '@vueuse/core'
 

@@ -6,6 +6,7 @@ import Developers from '../views/Developers.vue';
 import Timeline from '../views/Timeline.vue';
 import Login from '../views/Login.vue';
 import { useAuthStore } from '../stores/auth';
+import { isLocalDev } from '../utils/sqlite';
 
 const routes = [
   { path: '/login', name: 'login', component: Login, meta: { public: true } },
@@ -28,6 +29,14 @@ const router = createRouter({
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
   if (!auth.ready) await auth.init();
+  if (isLocalDev()) {
+    // In local dev, treat all routes as public; ensure loggedIn state.
+    if (!auth.loggedIn) {
+      auth.loggedIn = true; auth.username = auth.username || 'dev';
+    }
+    if (to.name === 'login') return { name: 'dashboard' };
+    return true;
+  }
   if (to.meta.public) {
     // If already logged in and going to login, bounce to redirect or dashboard
     if (to.name === 'login' && auth.loggedIn) {

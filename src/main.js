@@ -7,6 +7,7 @@ import { initDB, readSnapshot, writeSnapshot, importSQLScript } from './utils/sq
 import { useProjectsStore } from './stores/projects';
 import { buildSnapshot } from './utils/export';
 import { useAuthStore } from './stores/auth';
+import { isLocalDev } from './utils/sqlite';
 // Font Awesome
 import { library } from '@fortawesome/fontawesome-svg-core';
 import { FontAwesomeIcon } from '@fortawesome/vue-fontawesome';
@@ -26,7 +27,11 @@ library.add(faListUl, faCircleCheck, faPercent, faCalendarDays, faGauge, faBolt,
   await initDB();
   const store = useProjectsStore();
   const auth = useAuthStore();
-  await auth.init();
+  if (isLocalDev()) {
+    auth.loggedIn = true; auth.username = 'dev'; auth.ready = true;
+  } else {
+    await auth.init();
+  }
 
   async function hydrateIfNeeded(){
     if (!auth.loggedIn) return;

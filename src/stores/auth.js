@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import { initDB, getUserCount, createUser, verifyLogin, userExists } from '../utils/sqlite';
+import { initDB, getUserCount, createUser, verifyLogin, userExists, isLocalDev } from '../utils/sqlite';
 
 const SESSION_KEY = 'mt_auth_session_v1';
 
@@ -18,6 +18,14 @@ export const useAuthStore = defineStore('auth', {
       this.loading = true; this.error = null;
       try {
         await initDB();
+        if (isLocalDev()) {
+          // Skip auth entirely in local dev. Provide a stable pseudo user.
+          this.loggedIn = true;
+          this.username = 'dev';
+          this.needsBootstrapUser = false;
+          this.ready = true; this.loading = false;
+          return;
+        }
         const count = await getUserCount();
         this.needsBootstrapUser = count === 0;
         // Restore session if present, but only if username exists in DB

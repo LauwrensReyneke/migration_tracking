@@ -19,6 +19,46 @@ function base64ToBytes(b64){
   return bytes;
 }
 
+// Local dev persistence helpers (localStorage)
+const LS_KEY = 'mt_sqlite_db_b64';
+export function isLocalDev(){
+  if (typeof window === 'undefined') return false;
+  const host = window.location.hostname;
+  const devFlag = !!import.meta?.env?.DEV; // Vite sets this
+  return devFlag || /^(localhost|127\.0\.0\.1|0\.0\.0\.0)$/.test(host);
+}
+function loadLocalDB(){
+  return (async () => {
+    if (!SQL) SQL = await initSqlJs({ locateFile: () => wasmUrl });
+    const b64 = (typeof localStorage !== 'undefined') ? localStorage.getItem(LS_KEY) : null;
+    if (b64) {
+      try {
+        const bytes = base64ToBytes(b64);
+        db = new SQL.Database(bytes);
+        console.log('[loadLocalDB] loaded DB from localStorage', { size: bytes.length });
+        return db;
+      } catch (e) {
+        console.warn('[loadLocalDB] failed to parse stored DB, creating new', e?.message||String(e));
+      }
+    }
+    db = new SQL.Database();
+    console.log('[loadLocalDB] created new empty DB');
+    persistLocalDB();
+    return db;
+  })();
+}
+function persistLocalDB(){
+  if (!db) return;
+  try {
+    const bytes = db.export();
+    const b64 = bytesToBase64(bytes);
+    if (typeof localStorage !== 'undefined') localStorage.setItem(LS_KEY, b64);
+    console.log('[persistLocalDB] saved DB to localStorage', { size: bytes.length });
+  } catch (e) {
+    console.warn('[persistLocalDB] failed', e?.message||String(e));
+  }
+}
+
 // --- Auth helpers: PBKDF2 password hashing using Web Crypto ---
 async function pbkdf2Hash(password, saltBytes, iterations = 100000, keyLen = 32) {
   const enc = new TextEncoder();
@@ -34,14 +74,23 @@ export async function initDB(){
   if (initPromise) return initPromise;
   initPromise = (async () => {
     if (!SQL) SQL = await initSqlJs({ locateFile: () => wasmUrl });
-    const remoteUrl = import.meta?.env?.VITE_SQLITE_URL || '/api/db';
-    try {
-      console.log('[initDB] loading remote DB', remoteUrl);
-      await loadRemoteDB(remoteUrl);
-      console.log('[initDB] remote load OK');
-    } catch (e) {
-      console.warn('[initDB] remote load failed; using empty DB', e?.message||String(e));
-      db = new SQL.Database();
+    const runtimeEnv = (typeof window !== 'undefined' && window.__MT_ENV && window.__MT_ENV.sqliteUrl) ? window.__MT_ENV.sqliteUrl : null;
+    // Allow forcing remote in local dev via VITE_FORCE_REMOTE_DB=1; otherwise always use local storage when dev.
+    const forceRemote = !!import.meta?.env?.VITE_FORCE_REMOTE_DB;
+    const useLocal = isLocalDev() && !forceRemote;
+    if (useLocal) {
+      console.log('[initDB] local dev detected; using localStorage DB');
+      await loadLocalDB();
+    } else {
+      const remoteUrl = (runtimeEnv && String(runtimeEnv).trim()) ? String(runtimeEnv).trim() : (import.meta?.env?.VITE_SQLITE_URL || '/api/db');
+      try {
+        console.log('[initDB] loading remote DB', remoteUrl);
+        await loadRemoteDB(remoteUrl);
+        console.log('[initDB] remote load OK');
+      } catch (e) {
+        console.warn('[initDB] remote load failed; using empty DB', e?.message||String(e));
+        db = new SQL.Database();
+      }
     }
     db.exec(`PRAGMA foreign_keys = ON;`);
     db.exec(`
@@ -68,6 +117,7 @@ export async function initDB(){
         created_at TEXT NOT NULL
       );
     `);
+    if (useLocal) persistLocalDB();
     return db;
   })();
   return initPromise;
@@ -128,6 +178,9 @@ export async function writeSnapshot(snapshot){
       stmtSet2.free();
     }
     db.exec('COMMIT;');
+    if (isLocalDev()) {
+      persistLocalDB();
+    }
     await pushRemoteDB();
   } catch (e) {
     db.exec('ROLLBACK;');
@@ -139,6 +192,7 @@ export async function importSQLScript(sqlText){
   if (!db) await initDB();
   try {
     db.exec(sqlText);
+    if (isLocalDev()) persistLocalDB();
     await pushRemoteDB();
   } catch (e) {
     throw e;
@@ -148,6 +202,7 @@ export async function importSQLScript(sqlText){
 export async function resetDB(){
   if (!db) await initDB();
   db.exec('DELETE FROM projects; DELETE FROM devs; DELETE FROM settings;');
+  if (isLocalDev()) persistLocalDB();
   await pushRemoteDB();
 }
 
@@ -159,7 +214,6 @@ export async function getUserCount(){
     if (res[0] && res[0].values[0]) return Number(res[0].values[0][0]);
     return 0;
   } catch (e) {
-    // Table might not exist in an older blob; ensure schema then return 0 so bootstrap path activates.
     console.warn('[getUserCount] failed, ensuring users table then returning 0', e?.message||String(e));
     try { db.exec(`CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY,
@@ -181,7 +235,6 @@ export async function userExists(username){
     const res = db.exec(`SELECT 1 FROM users WHERE username = $u LIMIT 1`, { $u: u });
     return !!(res[0] && res[0].values && res[0].values[0]);
   } catch (e) {
-    // Ensure users table exists and treat as not existing
     try { db.exec(`CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
@@ -201,7 +254,6 @@ export async function listUsernames(){
     if (!res[0]) return [];
     return res[0].values.map(r => String(r[0]));
   } catch (e) {
-    // If table missing, return empty list
     return [];
   }
 }
@@ -211,7 +263,6 @@ export async function resetUsers(){
   try {
     db.exec('DELETE FROM users');
   } catch (e) {
-    // If users table missing, create it empty
     try { db.exec(`CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
@@ -221,6 +272,7 @@ export async function resetUsers(){
       created_at TEXT NOT NULL
     );`); } catch {}
   }
+  if (isLocalDev()) persistLocalDB();
   await pushRemoteDB();
   return true;
 }
@@ -239,6 +291,7 @@ export async function createUser(username, password, iterations = 100000){
   const stmt = db.prepare('INSERT INTO users (username, password_hash, salt, iterations, created_at) VALUES (?, ?, ?, ?, ?)');
   stmt.run([u, hashB64, saltB64, iterations, now]);
   stmt.free();
+  if (isLocalDev()) persistLocalDB();
   await pushRemoteDB();
   return true;
 }
@@ -324,6 +377,11 @@ export async function loadRemoteDB(url){
 // Remote write (PUT)
 export function getDBBytes(){ if (!db) throw new Error('DB not initialized'); return db.export(); }
 export async function pushRemoteDB(url){
+  const forceRemote = !!import.meta?.env?.VITE_FORCE_REMOTE_DB;
+  if (isLocalDev() && !forceRemote) {
+    persistLocalDB();
+    return { ok: true, status: 200, local: true };
+  }
   const target = url || '/api/db';
   const bytes = getDBBytes();
   console.log('[pushRemoteDB] putting bytes', { target, bytes: bytes.length });
