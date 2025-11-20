@@ -16,7 +16,7 @@
     <Modal :open="pasteOpen" title="Paste JSON Snapshot" @close="closePaste">
       <div class="space-y-3">
         <p class="text-xs text-slate-600">Paste a previously exported JSON snapshot to replace the local database. This only affects your local dev storage.</p>
-        <textarea v-model="pasteText" rows="10" class="w-full text-xs font-mono border rounded p-2 resize-y focus:outline-none focus:ring-2 focus:ring-blue-500/30" placeholder="{\n  \"version\": 1,\n  \"developers\": [\n    \"Dev A\"\n  ],\n  \"projects\": []\n}"></textarea>
+        <textarea v-model="pasteText" rows="10" class="w-full text-xs font-mono border rounded p-2 resize-y focus:outline-none focus:ring-2 focus:ring-blue-500/30" placeholder='{"version":1,"developers":["Dev A"],"projects":[]}'></textarea>
         <div v-if="pasteError" class="text-xs text-rose-600">{{ pasteError }}</div>
       </div>
       <template #footer>

@@ -3,7 +3,6 @@
     <Teleport to="#header-actions">
       <div class="flex items-center gap-2">
         <DBStatus />
-        <LocalPasteImport />
         <ExportMenu/>
       </div>
     </Teleport>
