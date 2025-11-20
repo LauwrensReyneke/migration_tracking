@@ -4,7 +4,7 @@
       <div class="flex items-center gap-2">
         <DBStatus />
         <LocalPasteImport />
-        <ExportMenu class="hidden" />
+        <ExportMenu/>
       </div>
     </Teleport>
 
@@ -260,6 +260,7 @@ import DBStatus from '../components/DBStatus.vue';
 import LocalPasteImport from '../components/LocalPasteImport.vue';
 import { ref, computed } from 'vue';
 import { useStorage } from '@vueuse/core'
+import ExportMenu from "../components/ExportMenu.vue";
 
 const store = useProjectsStore();
 const { totalCount, completedCount, completionRatio, targetAllCompletionDate, workloadByDev, projects, velocityData, averageCycleDays, throughputPerBusinessDay, remainingCount, forecastCompletionDate, requiredVelocityToHitTarget, isTargetRisk, burnDownData, mvpDev, wipLimits } = storeToRefs(store);
