@@ -3,12 +3,12 @@
     <div
       class="rounded-full text-white font-semibold flex items-center justify-center select-none shrink-0"
       :style="avatarStyle"
-      :title="name"
+      :title="name || 'Unassigned'"
     >
       {{ initials }}
     </div>
     <div class="truncate" v-if="showText">
-      <div class="font-medium text-gray-900 truncate" :class="nameClass">{{ name }}</div>
+      <div class="font-medium text-gray-900 truncate" :class="nameClass">{{ name || 'Unassigned' }}</div>
       <div v-if="subtitle" class="text-gray-500" :class="subtitleClass">{{ subtitle }}</div>
     </div>
   </div>
@@ -18,7 +18,7 @@
 import { computed } from 'vue'
 
 const props = defineProps({
-  name: { type: String, required: true },
+  name: { type: String, required: false, default: '' },
   subtitle: { type: String, default: null },
   // Pixel size of the avatar circle
   size: { type: Number, default: 28 },
@@ -65,7 +65,7 @@ function nameToColorHex(str) {
 const initials = computed(() => {
   const parts = String(props.name || '').trim().split(/\s+/).slice(0, 2)
   const chars = parts.map(p => p.charAt(0).toUpperCase()).join('')
-  return chars || 'DV'
+  return chars || 'UN'
 })
 
 const colorHex = computed(() => nameToColorHex(String(props.name || '')))

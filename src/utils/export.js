@@ -69,7 +69,7 @@ export function buildExportSQLiteSQL(snapshot) {
   lines.push('  started_at TEXT NULL,');
   lines.push('  completed_at TEXT NULL,');
   lines.push('  target_days INTEGER NOT NULL,');
-  lines.push('  assigned_dev_id INTEGER NOT NULL,');
+  lines.push('  assigned_dev_id INTEGER NULL,');
   lines.push('  FOREIGN KEY (assigned_dev_id) REFERENCES devs(id) ON UPDATE CASCADE');
   lines.push(');');
   lines.push('');
@@ -95,9 +95,9 @@ export function buildExportSQLiteSQL(snapshot) {
   lines.push('');
   // Insert projects
   snapshot.projects.forEach((p) => {
-    const dev = devId.get(p.assignedDev);
+    const dev = p.assignedDev ? devId.get(p.assignedDev) : null;
     // For safety, if a developer somehow wasn't mapped, create a placeholder
-    if (!dev) {
+    if (p.assignedDev && !dev) {
       const newId = snapshot.developers.length + 1;
       const placeholder = p.assignedDev || 'Unknown';
       if (!devId.has(placeholder)) {
@@ -105,13 +105,14 @@ export function buildExportSQLiteSQL(snapshot) {
         lines.push(`INSERT INTO devs (id, name, wip_limit) VALUES (${newId}, '${escapeSQLString(placeholder)}', NULL);`);
       }
     }
-    const devFk = devId.get(p.assignedDev);
+    const devFk = p.assignedDev ? devId.get(p.assignedDev) : null;
     const started = p.startedAt ? `'${escapeSQLString(p.startedAt)}'` : 'NULL';
     const completed = p.completedAt ? `'${escapeSQLString(p.completedAt)}'` : 'NULL';
+    const devSql = devFk ? String(devFk) : 'NULL';
     lines.push(
       `INSERT INTO projects (id, name, type, stage, created_at, started_at, completed_at, target_days, assigned_dev_id) VALUES (` +
       `${p.id}, '${escapeSQLString(p.name)}', '${escapeSQLString(p.type)}', '${escapeSQLString(p.stage)}', ` +
-      `'${escapeSQLString(p.createdAt)}', ${started}, ${completed}, ${Number(p.targetDays)}, ${devFk}` +
+      `'${escapeSQLString(p.createdAt)}', ${started}, ${completed}, ${Number(p.targetDays)}, ${devSql}` +
       `);`
     );
   });

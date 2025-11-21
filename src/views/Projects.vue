@@ -12,6 +12,7 @@
           </select>
           <select v-model="filters.dev" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
             <option value="all">All Devs</option>
+            <option value="unassigned">Unassigned</option>
             <option v-for="d in developers" :key="d" :value="d">{{ d }}</option>
           </select>
           <select v-model="filters.stage" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
@@ -47,6 +48,7 @@
         </select>
         <select v-model="filters.dev" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
           <option value="all">All Devs</option>
+          <option value="unassigned">Unassigned</option>
           <option v-for="d in developers" :key="d" :value="d">{{ d }}</option>
         </select>
         <select v-model="filters.stage" class="border border-slate-300 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
@@ -97,6 +99,7 @@
               </td>
               <td class="py-1 pr-2">
                 <select v-model="editForm.assignedDev" class="w-full text-xs border border-slate-300 rounded-lg px-2 py-1.5">
+                  <option value="">Unassigned</option>
                   <option v-for="d in developers" :key="d" :value="d">{{ d }}</option>
                 </select>
               </td>
@@ -125,7 +128,7 @@
             <template v-else>
               <td class="py-1 pr-2">{{ p.name }}</td>
               <td class="py-1 pr-2"><TypeBadge :type="p.type" /></td>
-              <td class="py-1 pr-2">{{ p.assignedDev }}</td>
+              <td class="py-1 pr-2">{{ p.assignedDev || 'Unassigned' }}</td>
               <td class="py-1 pr-2">{{ p.stage }}</td>
               <td class="py-1 pr-2">{{ p.targetDays }}</td>
               <td class="py-1 pr-2">{{ p.startedAt?.slice(0,10) || '-' }}</td>
@@ -186,7 +189,10 @@ const filteredProjects = computed(() => {
   const list = projects.value.filter(p => {
     if (filters.onlyActive && (p.stage === 'production' || p.stage === 'canceled')) return false;
     if (filters.type !== 'all' && p.type !== filters.type) return false;
-    if (filters.dev !== 'all' && p.assignedDev !== filters.dev) return false;
+    if (filters.dev !== 'all') {
+      if (filters.dev === 'unassigned') { if (p.assignedDev) return false; }
+      else if (p.assignedDev !== filters.dev) return false;
+    }
     if (filters.stage !== 'all' && p.stage !== filters.stage) return false;
     if (q && !(p.name || '').toLowerCase().includes(q)) return false;
     return true;

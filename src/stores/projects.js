@@ -49,7 +49,13 @@ export const useProjectsStore = defineStore('projects', {
     workloadByDev: (s) => {
       const map = {};
       s.developers.forEach(d => map[d] = 0);
-      s.projects.forEach(p => { if (p.stage !== 'production' && p.stage !== 'canceled') map[p.assignedDev] = (map[p.assignedDev]||0)+1; });
+      // count only assigned to known devs; keep unassigned out of per-dev load
+      s.projects.forEach(p => {
+        if (p.stage === 'production' || p.stage === 'canceled') return;
+        if (p.assignedDev && Object.prototype.hasOwnProperty.call(map, p.assignedDev)) {
+          map[p.assignedDev] = (map[p.assignedDev]||0)+1;
+        }
+      });
       return map;
     },
     devStats: (s) => {
@@ -353,7 +359,7 @@ export const useProjectsStore = defineStore('projects', {
         createdAt: formatISO(new Date()),
         startedAt,
         targetDays: data.targetDays || 4,
-        assignedDev: data.assignedDev,
+        assignedDev: data.assignedDev || '',
         completedAt
       });
       this.persistNow();
@@ -364,6 +370,8 @@ export const useProjectsStore = defineStore('projects', {
       if (idx === -1) return;
       const p = this.projects[idx];
       Object.assign(p, patch);
+      // normalize unassigned as empty string
+      if (!p.assignedDev) p.assignedDev = '';
       // If stage was edited directly ensure invariants
       if ((p.stage === 'production' || p.stage === 'canceled') && !p.completedAt) p.completedAt = formatISO(new Date());
       if (p.stage !== 'production' && p.stage !== 'canceled' && p.completedAt) p.completedAt = null;

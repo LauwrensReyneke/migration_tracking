@@ -12,6 +12,7 @@
           </select>
           <select v-model="devFilter" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
             <option value="all">All Devs</option>
+            <option value="unassigned">Unassigned</option>
             <option v-for="d in developers" :key="d" :value="d">{{ d }}</option>
           </select>
           <select v-model="stageFilter" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
@@ -44,6 +45,7 @@
         </select>
         <select v-model="devFilter" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
           <option value="all">All Devs</option>
+          <option value="unassigned">Unassigned</option>
           <option v-for="d in developers" :key="d" :value="d">{{ d }}</option>
         </select>
         <select v-model="stageFilter" class="border border-slate-300 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
@@ -98,7 +100,10 @@ const filteredProjects = computed(() => {
   const q = (search.value || '').trim().toLowerCase();
   return (projects.value || []).filter(p => {
     if (typeFilter.value !== 'all' && p.type !== typeFilter.value) return false;
-    if (devFilter.value !== 'all' && p.assignedDev !== devFilter.value) return false;
+    if (devFilter.value !== 'all') {
+      if (devFilter.value === 'unassigned') { if (p.assignedDev) return false; }
+      else if (p.assignedDev !== devFilter.value) return false;
+    }
     if (stageFilter.value !== 'all' && p.stage !== stageFilter.value) return false;
     if (!inDateRange(p)) return false;
     if (q) {

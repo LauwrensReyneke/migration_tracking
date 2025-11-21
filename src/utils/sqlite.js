@@ -93,30 +93,79 @@ export async function initDB(){
       }
     }
     db.exec(`PRAGMA foreign_keys = ON;`);
-    db.exec(`
-      CREATE TABLE IF NOT EXISTS devs (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, wip_limit INTEGER);
-      CREATE TABLE IF NOT EXISTS projects (
-        id INTEGER PRIMARY KEY,
-        name TEXT NOT NULL,
-        type TEXT NOT NULL CHECK (type IN ('migration','newbuild')),
-        stage TEXT NOT NULL CHECK (stage IN ('planning','template_build','review','final_updates','production','canceled')),
-        created_at TEXT NOT NULL,
-        started_at TEXT NULL,
-        completed_at TEXT NULL,
-        target_days INTEGER NOT NULL,
-        assigned_dev_id INTEGER NOT NULL,
-        FOREIGN KEY (assigned_dev_id) REFERENCES devs(id) ON UPDATE CASCADE
-      );
-      CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
-      CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY,
-        username TEXT NOT NULL UNIQUE,
-        password_hash TEXT NOT NULL,
-        salt TEXT NOT NULL,
-        iterations INTEGER NOT NULL DEFAULT 100000,
-        created_at TEXT NOT NULL
-      );
-    `);
+
+    // Ensure schema with nullable assigned_dev_id
+    try {
+      const info = db.exec(`PRAGMA table_info(projects)`);
+      const cols = info[0] ? info[0].values : [];
+      const colMap = new Map(cols.map(r => [String(r[1]), { notnull: Number(r[3]) }]));
+      const exists = cols.length > 0;
+      const needsMigration = exists && colMap.has('assigned_dev_id') && colMap.get('assigned_dev_id').notnull === 1;
+      if (!exists) {
+        db.exec(`
+          CREATE TABLE IF NOT EXISTS devs (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, wip_limit INTEGER);
+          CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL CHECK (type IN ('migration','newbuild')),
+            stage TEXT NOT NULL CHECK (stage IN ('planning','template_build','review','final_updates','production','canceled')),
+            created_at TEXT NOT NULL,
+            started_at TEXT NULL,
+            completed_at TEXT NULL,
+            target_days INTEGER NOT NULL,
+            assigned_dev_id INTEGER NULL,
+            FOREIGN KEY (assigned_dev_id) REFERENCES devs(id) ON UPDATE CASCADE
+          );
+          CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+          CREATE TABLE IF NOT EXISTS users (
+            id INTEGER PRIMARY KEY,
+            username TEXT NOT NULL UNIQUE,
+            password_hash TEXT NOT NULL,
+            salt TEXT NOT NULL,
+            iterations INTEGER NOT NULL DEFAULT 100000,
+            created_at TEXT NOT NULL
+          );
+        `);
+      } else if (needsMigration) {
+        console.log('[initDB] migrating projects table to allow NULL assigned_dev_id');
+        db.exec('BEGIN;');
+        db.exec(`
+          CREATE TABLE projects_new (
+            id INTEGER PRIMARY KEY,
+            name TEXT NOT NULL,
+            type TEXT NOT NULL CHECK (type IN ('migration','newbuild')),
+            stage TEXT NOT NULL CHECK (stage IN ('planning','template_build','review','final_updates','production','canceled')),
+            created_at TEXT NOT NULL,
+            started_at TEXT NULL,
+            completed_at TEXT NULL,
+            target_days INTEGER NOT NULL,
+            assigned_dev_id INTEGER NULL,
+            FOREIGN KEY (assigned_dev_id) REFERENCES devs(id) ON UPDATE CASCADE
+          );
+          INSERT INTO projects_new (id,name,type,stage,created_at,started_at,completed_at,target_days,assigned_dev_id)
+            SELECT id,name,type,stage,created_at,started_at,completed_at,target_days,assigned_dev_id FROM projects;
+          DROP TABLE projects;
+          ALTER TABLE projects_new RENAME TO projects;
+        `);
+        db.exec('COMMIT;');
+      }
+      // Ensure other tables exist
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS devs (id INTEGER PRIMARY KEY, name TEXT NOT NULL UNIQUE, wip_limit INTEGER);
+        CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT);
+        CREATE TABLE IF NOT EXISTS users (
+          id INTEGER PRIMARY KEY,
+          username TEXT NOT NULL UNIQUE,
+          password_hash TEXT NOT NULL,
+          salt TEXT NOT NULL,
+          iterations INTEGER NOT NULL DEFAULT 100000,
+          created_at TEXT NOT NULL
+        );
+      `);
+    } catch (e) {
+      console.warn('[initDB] ensure schema failed', e?.message||String(e));
+    }
+
     if (useLocal) persistLocalDB();
     return db;
   })();
@@ -137,7 +186,7 @@ export async function readSnapshot(){
   const projRes = db.exec('SELECT id,name,type,stage,created_at,started_at,completed_at,target_days,assigned_dev_id FROM projects ORDER BY id ASC');
   if (projRes[0]) {
     const rows = projRes[0].values;
-    out.projects = rows.map(r => ({ id: Number(r[0]), name: r[1], type: r[2], stage: r[3], createdAt: r[4], startedAt: r[5], completedAt: r[6], targetDays: Number(r[7]), assignedDev: mapDev.get(r[8]) || 'Unknown' }));
+    out.projects = rows.map(r => ({ id: Number(r[0]), name: r[1], type: r[2], stage: r[3], createdAt: r[4], startedAt: r[5], completedAt: r[6], targetDays: Number(r[7]), assignedDev: mapDev.get(r[8]) || '' }));
   }
   const setDate = db.exec("SELECT value FROM settings WHERE key='target_all_completion_date' LIMIT 1");
   if (setDate[0] && setDate[0].values[0]) out.targetAllCompletionDate = String(setDate[0].values[0][0]);
@@ -161,10 +210,10 @@ export async function writeSnapshot(snapshot){
     stmtDev.free();
     const stmtProj = db.prepare('INSERT INTO projects (id,name,type,stage,created_at,started_at,completed_at,target_days,assigned_dev_id) VALUES (?,?,?,?,?,?,?,?,?)');
     snapshot.projects.forEach(p => {
-      const devId = devIds.get(p.assignedDev);
+      const devId = p.assignedDev ? devIds.get(p.assignedDev) : null;
       const startedAt = p.startedAt || null;
       const completedAt = p.completedAt || null;
-      stmtProj.run([Number(p.id), String(p.name), String(p.type), String(p.stage), String(p.createdAt), startedAt, completedAt, Number(p.targetDays), Number(devId)]);
+      stmtProj.run([Number(p.id), String(p.name), String(p.type), String(p.stage), String(p.createdAt), startedAt, completedAt, Number(p.targetDays), devId || null]);
     });
     stmtProj.free();
     if (snapshot.targetAllCompletionDate) {
@@ -260,36 +309,27 @@ export async function listUsernames(){
 
 export async function resetUsers(){
   if (!db) await initDB();
-  try {
-    db.exec('DELETE FROM users');
-  } catch (e) {
-    try { db.exec(`CREATE TABLE IF NOT EXISTS users (
-      id INTEGER PRIMARY KEY,
-      username TEXT NOT NULL UNIQUE,
-      password_hash TEXT NOT NULL,
-      salt TEXT NOT NULL,
-      iterations INTEGER NOT NULL DEFAULT 100000,
-      created_at TEXT NOT NULL
-    );`); } catch {}
-  }
+  db.exec('DELETE FROM users;');
   if (isLocalDev()) persistLocalDB();
   await pushRemoteDB();
-  return true;
 }
 
-export async function createUser(username, password, iterations = 100000){
+export async function createUser(username, password){
   if (!db) await initDB();
   const u = String(username || '').trim();
-  if (!u || !password) throw new Error('Username and password required');
-  const exists = db.exec(`SELECT 1 FROM users WHERE username = $u LIMIT 1`, { $u: u });
-  if (exists[0]) throw new Error('User already exists');
+  const p = String(password || '');
+  if (!u || !p) throw new Error('Username and password required');
+  // Check if exists
+  const exists = db.exec(`SELECT 1 FROM users WHERE username=$u LIMIT 1`, { $u: u });
+  if (exists[0] && exists[0].values[0]) throw new Error('User already exists');
   const salt = randomBytes(16);
-  const hashBytes = await pbkdf2Hash(password, salt, iterations);
-  const saltB64 = bytesToBase64(salt);
+  const iterations = 100000;
+  const hashBytes = await pbkdf2Hash(p, salt, iterations, 32);
   const hashB64 = bytesToBase64(hashBytes);
-  const now = new Date().toISOString();
+  const saltB64 = bytesToBase64(salt);
+  const createdAt = new Date().toISOString();
   const stmt = db.prepare('INSERT INTO users (username, password_hash, salt, iterations, created_at) VALUES (?, ?, ?, ?, ?)');
-  stmt.run([u, hashB64, saltB64, iterations, now]);
+  stmt.run([u, hashB64, saltB64, iterations, createdAt]);
   stmt.free();
   if (isLocalDev()) persistLocalDB();
   await pushRemoteDB();
@@ -299,108 +339,36 @@ export async function createUser(username, password, iterations = 100000){
 export async function verifyLogin(username, password){
   if (!db) await initDB();
   const u = String(username || '').trim();
-  if (!u || !password) return false;
-  const res = db.exec(`SELECT username, password_hash, salt, iterations FROM users WHERE username = $u LIMIT 1`, { $u: u });
+  const p = String(password || '');
+  if (!u || !p) return false;
+  const res = db.exec('SELECT password_hash, salt, iterations FROM users WHERE username=$u LIMIT 1', { $u: u });
   if (!res[0] || !res[0].values[0]) return false;
   const row = res[0].values[0];
-  const storedHash = String(row[1]);
-  const saltB64 = String(row[2]);
-  const iter = Number(row[3]) || 100000;
-  try {
-    const saltBytes = b64ToBytes(saltB64);
-    const hashBytes = await pbkdf2Hash(password, saltBytes, iter);
-    const calcB64 = bytesToBase64(hashBytes);
-    return calcB64 === storedHash;
-  } catch {
-    return false;
-  }
+  const storedHashB64 = String(row[0] || '');
+  const saltB64 = String(row[1] || '');
+  const iterations = Number(row[2] || 100000);
+  if (!storedHashB64 || !saltB64 || !Number.isFinite(iterations)) return false;
+  const saltBytes = base64ToBytes(saltB64);
+  const hashBytes = await pbkdf2Hash(p, saltBytes, iterations, 32);
+  const calcHashB64 = bytesToBase64(hashBytes);
+  return calcHashB64 === storedHashB64;
 }
 
-// Load a remote SQLite database file (arraybuffer)
-export async function loadRemoteDB(url){
+// --- Remote DB (vercel blob) ---
+async function loadRemoteDB(url){
+  const resp = await fetch(url, { method: 'GET', cache: 'no-store' });
+  if (!resp.ok) throw new Error(`Remote DB fetch failed: ${resp.status}`);
+  const buf = await resp.arrayBuffer();
   if (!SQL) SQL = await initSqlJs({ locateFile: () => wasmUrl });
-  const resolved = url || '/api/db';
-  console.log('[loadRemoteDB] fetching remote DB', { url: resolved });
-
-  const buildHeaders = () => {
-    const h = {};
-    const key = import.meta?.env?.VITE_DB_API_KEY || '';
-    if (key) h['x-api-key'] = key;
-    return h;
-  };
-
-  const tryFetch = async (u) => {
-    const res = await fetch(u, { cache: 'no-store', headers: buildHeaders() });
-    const ct = res.headers?.get?.('content-type') || 'unknown';
-    const ab = res.ok ? await res.arrayBuffer() : null;
-    const len = ab ? ab.byteLength : 0;
-    return { res, ct, ab, len };
-  };
-
-  const addDownloadParam = (u) => {
-    try {
-      const hx = new URL(u, typeof window !== 'undefined' ? window.location.origin : 'http://localhost');
-      if (!hx.searchParams.has('download')) hx.searchParams.set('download', '1');
-      return hx.toString();
-    } catch { return u + (u.includes('?') ? '&' : '?') + 'download=1'; }
-  };
-
-  let first = await tryFetch(resolved);
-  let attempt = 1;
-
-  if (first.res?.ok && (/text\/html|application\/json/i.test(first.ct) || first.len === 0)) {
-    const alt = addDownloadParam(resolved);
-    console.warn('[loadRemoteDB] unexpected response; retrying with download=1', { contentType: first.ct, len: first.len, alt });
-    const second = await tryFetch(alt);
-    if (second.res?.ok && second.len > 0) first = second;
-    attempt = 2;
-  }
-
-  if (!first.res?.ok) {
-    let body = '';
-    try { body = await first.res.text(); } catch {}
-    console.warn('[loadRemoteDB] fetch failed', { status: first.res?.status, statusText: first.res?.statusText, contentType: first.ct, body });
-    throw new Error(`Failed to load database from ${resolved} (status ${first.res?.status||'n/a'})`);
-  }
-  if (!first.len) {
-    console.warn('[loadRemoteDB] remote bytes empty after attempts', { attempts: attempt, contentType: first.ct });
-    throw new Error('Remote database file was empty');
-  }
-
-  const bytes = new Uint8Array(first.ab);
-  try { if (db && typeof db.close === 'function') db.close(); } catch {}
-  db = new SQL.Database(bytes);
-  console.log('[loadRemoteDB] remote DB instantiated', { size: bytes.length, attempts: attempt, contentType: first.ct });
-  return db;
+  db = new SQL.Database(new Uint8Array(buf));
 }
 
-// Remote write (PUT)
-export function getDBBytes(){ if (!db) throw new Error('DB not initialized'); return db.export(); }
-export async function pushRemoteDB(url){
-  const forceRemote = !!import.meta?.env?.VITE_FORCE_REMOTE_DB;
-  if (isLocalDev() && !forceRemote) {
-    persistLocalDB();
-    return { ok: true, status: 200, local: true };
-  }
-  const target = url || '/api/db';
-  const bytes = getDBBytes();
-  console.log('[pushRemoteDB] putting bytes', { target, bytes: bytes.length });
-  let res;
+async function pushRemoteDB(){
   try {
-    const headers = { 'Content-Type':'application/octet-stream' };
-    const key = import.meta?.env?.VITE_DB_API_KEY || '';
-    if (key) headers['x-api-key'] = key;
-    res = await fetch(target, { method:'PUT', headers, body: bytes });
+    const url = (typeof window !== 'undefined' && window.__MT_ENV && window.__MT_ENV.sqliteUrl) ? window.__MT_ENV.sqliteUrl : (import.meta?.env?.VITE_SQLITE_URL || '/api/db');
+    const bytes = db.export();
+    await fetch(url, { method: 'PUT', body: bytes });
   } catch (e) {
-    console.error('[pushRemoteDB] network error', { target, error: String(e?.message||e) });
-    throw e;
+    console.warn('[pushRemoteDB] failed', e?.message||String(e));
   }
-  if (!res.ok) {
-    let body = '';
-    try { body = await res.text(); } catch {}
-    console.warn('[pushRemoteDB] failed', { status: res.status, target, body });
-  } else {
-    console.log('[pushRemoteDB] success', { status: res.status, target });
-  }
-  return { ok: res.ok, status: res.status };
 }

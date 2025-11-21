@@ -103,7 +103,7 @@
         <div ref="tooltipRef" class="relative bg-white/90 backdrop-blur-sm ring-1 ring-slate-200 shadow-xl rounded-xl px-3 py-2 text-[11px] text-slate-700">
           <div class="font-semibold text-slate-900 text-[11px] max-w-[260px] truncate">{{ tooltip.p.name }}</div>
           <div class="flex items-center gap-2 mt-0.5">
-            <DevProfile :name="tooltip.p.assignedDev" :size="18" :showText="true" :nameClass="'text-[10px] font-medium text-slate-700'" />
+            <DevProfile :name="tooltip.p.assignedDev || 'Unassigned'" :size="18" :showText="true" :nameClass="'text-[10px] font-medium text-slate-700'" />
           </div>
           <div class="text-[10px] mt-0.5 font-mono text-slate-600">{{ fmt(startOf(tooltip.p)) }} → {{ fmt(endOf(tooltip.p)) }} <span class="text-slate-400">· {{ durationDays(tooltip.p) }}d</span></div>
           <div class="text-[10px] flex items-center gap-2 mt-0.5">

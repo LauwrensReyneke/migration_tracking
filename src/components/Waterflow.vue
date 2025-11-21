@@ -82,7 +82,7 @@
             </div>
 
             <div class="mt-1 flex items-center justify-between text-[10px] text-slate-500">
-              <DevProfile :name="p.assignedDev" :size="18" :showText="true" :nameClass="'text-[10px]'" />
+              <DevProfile :name="p.assignedDev || 'Unassigned'" :size="18" :showText="true" :nameClass="'text-[10px]'" />
               <div class="inline-flex items-center gap-1">
                 <span v-if="p.startedAt && !p.completedAt" class="relative px-1.5 py-0.5 rounded-md bg-amber-50 text-amber-700 border border-amber-200/70">
                   D+{{ age(p) }}

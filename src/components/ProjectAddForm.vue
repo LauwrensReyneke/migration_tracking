@@ -16,6 +16,7 @@
         <div>
           <label class="block text-xs text-slate-600 mb-1">Assignee</label>
           <select v-model="assignedDev" class="w-full border border-slate-300 rounded-md px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500">
+            <option value="">Unassigned</option>
             <option v-for="d in developers" :key="d" :value="d">{{ d }}</option>
           </select>
         </div>
@@ -56,7 +57,8 @@ const developers = computed(()=> store.developers);
 
 const name = ref('');
 const type = ref('migration');
-const assignedDev = ref(developers.value[0] || '');
+// Default to unassigned; user may pick a dev
+const assignedDev = ref('');
 const targetDays = ref(4);
 const startedAtDate = ref('');
 const completedAtDate = ref('');
