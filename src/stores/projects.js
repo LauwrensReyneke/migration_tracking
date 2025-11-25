@@ -189,8 +189,8 @@ export const useProjectsStore = defineStore('projects', {
       return +(total / done.length).toFixed(2);
     },
     throughputPerBusinessDay: (s) => {
-      // Use all items in production, even if completedAt is missing (legacy data)
-      const done = s.projects.filter(p => p.stage === 'production');
+      // Only consider migrations
+      const done = s.projects.filter(p => p.stage === 'production' && p.type === 'migration');
       if (!done.length) return 0;
       const firstStart = done.reduce((earliest, p) => {
         const d = parseISO(p.startedAt || p.createdAt);
@@ -199,8 +199,9 @@ export const useProjectsStore = defineStore('projects', {
       const days = Math.max(differenceInBusinessDays(new Date(), firstStart), 1);
       return +(done.length / days).toFixed(3);
     },
-    remainingCount: (s) => s.projects.filter(p => p.stage !== 'production' && p.stage !== 'canceled').length,
+    remainingCount: (s) => s.projects.filter(p => p.type === 'migration' && p.stage !== 'production' && p.stage !== 'canceled').length,
     forecastCompletionDate() {
+      // Only consider migrations
       if (!this.remainingCount) return this.targetAllCompletionDate; // nothing remaining
       if (!this.throughputPerBusinessDay) return null; // insufficient data
       const remaining = this.remainingCount;
@@ -214,6 +215,7 @@ export const useProjectsStore = defineStore('projects', {
       return formatISO(date).slice(0,10);
     },
     requiredVelocityToHitTarget() {
+      // Only consider migrations
       const remaining = this.remainingCount;
       if (!remaining) return 0;
       const today = new Date();
@@ -223,19 +225,21 @@ export const useProjectsStore = defineStore('projects', {
       return +(remaining / daysLeft).toFixed(3);
     },
     isTargetRisk() {
+      // Only consider migrations
       if (!this.remainingCount) return false;
       if (!this.forecastCompletionDate) return true; // cannot forecast yet => flag risk
       return isBefore(parseISO(this.targetAllCompletionDate), parseISO(this.forecastCompletionDate));
     },
     burnDownData: (s) => {
-      if (!s.projects.length) return { labels: [], actual: [], ideal: [], idealAbsolute: [], forecast: [] };
-      const projects = s.projects;
-      const nonCanceled = projects.filter(p => p.stage !== 'canceled');
+      // Only consider migrations
+      const all = s.projects.filter(p => p.type === 'migration');
+      if (!all.length) return { labels: [], actual: [], ideal: [], idealAbsolute: [], forecast: [], today: new Date().toISOString().slice(0,10), targetDate: s.targetAllCompletionDate, forecastDate: null };
+      const nonCanceled = all.filter(p => p.stage !== 'canceled');
       const total = nonCanceled.length;
       const today = new Date();
       const todayStr = formatISO(today).slice(0,10);
       const completionsByDay = {};
-      projects.forEach(p => {
+      all.forEach(p => {
         if (p.stage === 'production') {
           if (p.completedAt) {
             const d = p.completedAt.slice(0,10);
@@ -248,7 +252,7 @@ export const useProjectsStore = defineStore('projects', {
           completionsByDay[d] = (completionsByDay[d]||0) + 1;
         }
       });
-      const firstDateISO = nonCanceled.length ? nonCanceled.reduce((earliest, p) => !earliest || p.createdAt < earliest ? p.createdAt : earliest, nonCanceled[0].createdAt) : projects[0].createdAt;
+      const firstDateISO = nonCanceled.length ? nonCanceled.reduce((earliest, p) => !earliest || p.createdAt < earliest ? p.createdAt : earliest, nonCanceled[0].createdAt) : all[0].createdAt;
       const completionDays = Object.keys(completionsByDay).sort();
       const startDate = completionDays.length ? parseISO(completionDays[0]) : parseISO(firstDateISO);
       const lastRelevant = parseISO(s.targetAllCompletionDate);
@@ -256,7 +260,7 @@ export const useProjectsStore = defineStore('projects', {
       while (!isBefore(lastRelevant, cursor)) { labels.push(formatISO(cursor).slice(0,10)); cursor = addDays(cursor,1); }
       let cumulative = 0; const actual = labels.map(d => { cumulative += (completionsByDay[d]||0); return total - cumulative; });
       // compute current remaining as of today (used by ideal anchored and forecast)
-      const produced = projects.filter(p => p.stage === 'production').length;
+      const produced = all.filter(p => p.stage === 'production').length;
       let remaining = total - produced;
       // Ideal (anchored from today to target over business days; null before today)
       const totalBizDaysForward = Math.max(differenceInBusinessDays(lastRelevant, today), 1);
@@ -272,8 +276,8 @@ export const useProjectsStore = defineStore('projects', {
         const idx = Math.min(Math.max(differenceInBusinessDays(parseISO(d), startDate), 0), totalBizDaysAbs);
         return +(total * (1 - idx/totalBizDaysAbs)).toFixed(2);
       });
-      // compute throughput per business day for forecast
-      let throughput = 0; const doneProd = projects.filter(p => p.stage === 'production');
+      // compute throughput per business day for forecast (production only)
+      let throughput = 0; const doneProd = all.filter(p => p.stage === 'production');
       if (doneProd.length){
         const firstStartISO = doneProd.reduce((earliest, p) => !earliest || (p.startedAt||p.createdAt) < earliest ? (p.startedAt||p.createdAt) : earliest, doneProd[0].startedAt||doneProd[0].createdAt);
         const days = Math.max(differenceInBusinessDays(today, parseISO(firstStartISO)),1);
@@ -286,7 +290,13 @@ export const useProjectsStore = defineStore('projects', {
         if (!isWeekend(dateObj)) remaining = Math.max(0, remaining - throughput);
         return +remaining.toFixed(2);
       });
-      return { labels, actual, ideal, idealAbsolute, forecast };
+      // derive forecast date when forecast reaches zero
+      let forecastDate = null;
+      for (let i=0;i<labels.length;i++){
+        const y = forecast[i];
+        if (typeof y === 'number' && y <= 0) { forecastDate = labels[i]; break; }
+      }
+      return { labels, actual, ideal, idealAbsolute, forecast, today: todayStr, targetDate: s.targetAllCompletionDate, forecastDate };
     }
   },
   actions: {

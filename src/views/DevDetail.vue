@@ -133,31 +133,74 @@
     </div>
 
     <!-- Charts -->
-    <section class="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200 shadow-sm">
-      <h3 class="font-medium mb-2 text-slate-800">Burn Down ({{ typeFilterLabel }})</h3>
-      <BurnDownChart :data="devBurnDownData" />
-    </section>
-
-    <section class="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200 shadow-sm">
-      <h3 class="font-medium mb-2 text-slate-800">Daily Completions & Throughput ({{ typeFilterLabel }})</h3>
-      <DailyThroughputChart :data="devVelocityChartData" />
-    </section>
-
-    <section class="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200 shadow-sm">
-      <h3 class="font-medium mb-2 text-slate-800">Velocity ({{ typeFilterLabel }})</h3>
-      <VelocityChart :data="devVelocityChartData" />
-    </section>
-
-    <div class="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200 shadow-sm">
-      <h3 class="font-medium mb-2 text-slate-800">Stage Distribution</h3>
-      <div class="flex flex-wrap gap-4 text-xs">
-        <div v-for="(count, stage) in stageCounts" :key="stage" class="flex items-center gap-2">
-          <span class="inline-block w-3 h-3 rounded" :class="stageColor(stage)"></span>
-          <span>{{ stage }}: <strong>{{ count }}</strong></span>
+    <section aria-labelledby="graphs-heading" class="space-y-3">
+      <div class="flex items-center justify-between">
+        <h3 id="graphs-heading" class="font-medium text-slate-800">Graphs ({{ typeFilterLabel }})</h3>
+        <div
+          role="tablist"
+          aria-label="Graphs"
+          class="inline-flex items-center gap-1 rounded-full bg-slate-100/90 backdrop-blur px-1 py-1 border border-slate-200 shadow-sm"
+          @keydown.left.prevent="focusPrevTab"
+          @keydown.right.prevent="focusNextTab"
+        >
+          <button
+            v-for="t in graphTabs"
+            :key="t.key"
+            role="tab"
+            :id="`tab-${t.key}`"
+            :aria-controls="`panel-${t.key}`"
+            :aria-selected="activeGraphTab === t.key"
+            @click="activeGraphTab = t.key"
+            class="px-3.5 py-1.5 rounded-full text-[13px] font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/40 transition-colors"
+            :class="activeGraphTab === t.key
+              ? 'bg-white text-slate-900 shadow border border-slate-200'
+              : 'text-slate-600 hover:text-slate-900 hover:bg-white/60 active:bg-white/70'
+            "
+          >
+            {{ t.label }}
+          </button>
         </div>
-        <div v-if="!Object.keys(stageCounts).length" class="text-gray-400 italic">No active work</div>
       </div>
-    </div>
+
+      <!-- Panels -->
+      <div
+        v-show="activeGraphTab === 'burndown'"
+        role="tabpanel"
+        :id="'panel-burndown'"
+        :aria-labelledby="'tab-burndown'"
+        class="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200 shadow-sm"
+      >
+        <div class="flex items-center justify-between mb-2">
+          <h4 class="font-medium text-slate-800">Burn Down (Remaining Work)</h4>
+          <div class="text-[11px] text-slate-700 bg-slate-100 border border-slate-200 rounded-full px-2 py-0.5">
+            Today: {{ new Date().toISOString().slice(0,10) }}
+          </div>
+        </div>
+        <BurnDownChart :data="devBurnDownData" />
+      </div>
+
+      <div
+        v-show="activeGraphTab === 'throughput'"
+        role="tabpanel"
+        :id="'panel-throughput'"
+        :aria-labelledby="'tab-throughput'"
+        class="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200 shadow-sm"
+      >
+        <h4 class="font-medium mb-2 text-slate-800">Daily Completions & Throughput</h4>
+        <DailyThroughputChart :data="devVelocityChartData" />
+      </div>
+
+      <div
+        v-show="activeGraphTab === 'velocity'"
+        role="tabpanel"
+        :id="'panel-velocity'"
+        :aria-labelledby="'tab-velocity'"
+        class="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200 shadow-sm"
+      >
+        <h4 class="font-medium mb-2 text-slate-800">Completion Velocity</h4>
+        <VelocityChart :data="devVelocityChartData" />
+      </div>
+    </section>
 
     <div class="bg-white/80 backdrop-blur-sm p-4 rounded-2xl border border-slate-200 shadow-sm">
       <h3 class="font-medium mb-3 text-slate-800">Active Projects</h3>
@@ -357,18 +400,25 @@ const devVelocityData = computed(()=> {
 });
 
 const devBurnDownData = computed(()=> {
-  const projects = allForDev.value;
+  // mirror dashboard logic but scoped to this dev and filtered by type
+  const projects = allForDev.value; // already type-filtered
+  if (!projects.length) return { labels: [], actual: [], ideal: [], idealAbsolute: [], forecast: [], today: new Date().toISOString().slice(0,10), targetDate: store.targetAllCompletionDate, forecastDate: null };
   const nonCanceled = projects.filter(p => p.stage !== 'canceled');
   const total = nonCanceled.length;
-  if (!projects.length) return { labels:[], actual:[], ideal:[], forecast:[] };
+  const today = new Date();
+  const todayStr = formatISO(today).slice(0,10);
   const completionsByDay = {};
-  const todayStr = formatISO(new Date()).slice(0,10);
   projects.forEach(p => {
     if (p.stage === 'production') {
-      if (p.completedAt) { const d = p.completedAt.slice(0,10); completionsByDay[d] = (completionsByDay[d]||0)+1; }
-      else { completionsByDay[todayStr] = (completionsByDay[todayStr]||0)+1; }
+      if (p.completedAt) {
+        const d = p.completedAt.slice(0,10);
+        completionsByDay[d] = (completionsByDay[d]||0) + 1;
+      } else {
+        completionsByDay[todayStr] = (completionsByDay[todayStr]||0) + 1;
+      }
     } else if (p.stage === 'canceled') {
-      const d = p.completedAt ? p.completedAt.slice(0,10) : todayStr; completionsByDay[d] = (completionsByDay[d]||0)+1;
+      const d = p.completedAt ? p.completedAt.slice(0,10) : todayStr;
+      completionsByDay[d] = (completionsByDay[d]||0) + 1;
     }
   });
   const firstDateISO = (nonCanceled.length ? nonCanceled : projects).reduce((earliest, p) => !earliest || p.createdAt < earliest ? p.createdAt : earliest, projects[0].createdAt);
@@ -378,37 +428,69 @@ const devBurnDownData = computed(()=> {
   const labels = []; let cursor = new Date(startDate);
   while (!isBefore(lastRelevant, cursor)) { labels.push(formatISO(cursor).slice(0,10)); cursor = addDays(cursor,1); }
   let cumulative = 0; const actual = labels.map(d => { cumulative += (completionsByDay[d]||0); return total - cumulative; });
-  const ideal = labels.length <= 1 ? [total] : labels.map((_,i)=> +(total*(1 - i/(labels.length-1))).toFixed(2));
-  // simple forecast using per-dev throughput (production only)
-  let throughput = 0; const done = projects.filter(p=>p.stage==='production');
-  if (done.length){ const firstStartISO = done.reduce((earliest, p) => !earliest || (p.startedAt||p.createdAt) < earliest ? (p.startedAt||p.createdAt) : earliest, done[0].startedAt||done[0].createdAt);
-    const days = Math.max(differenceInBusinessDays(new Date(), parseISO(firstStartISO)),1);
+  // Remaining as of today for anchored & forecast
+  const produced = projects.filter(p => p.stage === 'production').length;
+  let remaining = total - produced;
+  // Ideal anchored (null for past days)
+  const totalBizDaysForward = Math.max(differenceInBusinessDays(lastRelevant, today), 1);
+  const ideal = labels.map(d => {
+    const dateObj = parseISO(d + 'T00:00:00');
+    if (isBefore(dateObj, today)) return null;
+    const idx = Math.min(Math.max(differenceInBusinessDays(dateObj, today), 0), totalBizDaysForward);
+    return +(remaining * (1 - idx/totalBizDaysForward)).toFixed(2);
+  });
+  // Ideal absolute across entire range (business days between start and target)
+  const totalBizDaysAbs = Math.max(differenceInBusinessDays(lastRelevant, startDate), 1);
+  const idealAbsolute = labels.map(d => {
+    const idx = Math.min(Math.max(differenceInBusinessDays(parseISO(d), startDate), 0), totalBizDaysAbs);
+    return +(total * (1 - idx/totalBizDaysAbs)).toFixed(2);
+  });
+  // Per-dev throughput (production only)
+  let throughput = 0; const done = projects.filter(p => p.stage === 'production');
+  if (done.length){
+    const firstStartISO = done.reduce((earliest, p) => !earliest || (p.startedAt||p.createdAt) < earliest ? (p.startedAt||p.createdAt) : earliest, done[0].startedAt||done[0].createdAt);
+    const days = Math.max(differenceInBusinessDays(today, parseISO(firstStartISO)),1);
     throughput = done.length / days;
   }
-  let remaining = total - projects.filter(p=>p.stage==='production').length;
-  const forecast = labels.map(d => { const dateObj = parseISO(d + 'T00:00:00'); if (!isWeekend(dateObj) && isBefore(new Date(), addDays(dateObj,1))) remaining = Math.max(0, remaining - throughput); return +remaining.toFixed(2); });
-  return { labels, actual, ideal, forecast };
+  const forecast = labels.map(d => {
+    const dateObj = parseISO(d + 'T00:00:00');
+    if (isBefore(dateObj, today)) return null;
+    if (d === todayStr) return +remaining.toFixed(2);
+    if (!isWeekend(dateObj)) remaining = Math.max(0, remaining - throughput);
+    return +remaining.toFixed(2);
+  });
+  // Compute per-dev forecast date (when remaining hits 0 in forecast)
+  let forecastDate = null;
+  for (let i=0;i<labels.length;i++){
+    const y = forecast[i];
+    if (typeof y === 'number' && y <= 0) { forecastDate = labels[i]; break; }
+  }
+  return { labels, actual, ideal, idealAbsolute, forecast, today: todayStr, targetDate: store.targetAllCompletionDate, forecastDate };
 });
 
 // New: data for the enhanced VelocityChart (per-dev)
 const devVelocityChartData = computed(() => {
   const labels = devBurnDownData.value?.labels || [];
   const actualRemaining = devBurnDownData.value?.actual || [];
-  const idealRem = devBurnDownData.value?.ideal || [];
+  const idealAbsolute = devBurnDownData.value?.idealAbsolute || [];
 
   if (!labels.length) return { labels: [], daily: [], ma7: [], cumActual: [], cumIdeal: [], requiredPerDay: 0, avgPerDay: 0, today: new Date().toISOString().slice(0,10), targetDate: store.targetAllCompletionDate, forecastDate: null };
 
-  const total = typeof idealRem[0] === 'number' ? idealRem[0] : (Math.max(...idealRem.filter(n => typeof n === 'number')) || 0);
+  // total work from first idealAbsolute value (remaining at start)
+  const total = typeof idealAbsolute[0] === 'number' ? idealAbsolute[0] : (Math.max(...idealAbsolute.filter(n => typeof n === 'number')) || 0);
 
+  // cumulative actual completions = total - remaining
   const cumActual = actualRemaining.map(v => typeof v === 'number' ? Math.max(0, total - v) : null);
-  const cumIdeal = idealRem.map(v => typeof v === 'number' ? Math.max(0, total - v) : null);
+  const cumIdeal = idealAbsolute.map(v => typeof v === 'number' ? Math.max(0, total - v) : null);
 
+  // daily completions = diff of cumActual (non-negative)
   const daily = cumActual.map((v, i) => {
     if (v == null) return 0;
     const prev = i > 0 && cumActual[i-1] != null ? cumActual[i-1] : 0;
     return Math.max(0, +(v - prev).toFixed(3));
   });
 
+  // 7-day simple moving average
   const window = 7;
   const ma7 = daily.map((_, i) => {
     const start = Math.max(0, i - window + 1);
@@ -419,18 +501,13 @@ const devVelocityChartData = computed(() => {
 
   const todayStr = new Date().toISOString().slice(0,10);
   const targetDate = store.targetAllCompletionDate;
-  const remaining = activeCount.value; // active projects for this dev
+  const remaining = activeCount.value; // active items for this dev under filter
   const daysLeft = differenceInBusinessDays(parseISO(targetDate), new Date());
   const requiredPerDay = daysLeft <= 0 ? Infinity : +(remaining / daysLeft).toFixed(3);
   const avgPerDay = +(throughput.value || 0).toFixed(3);
 
-  // forecast date per dev (business days based on dev avg)
-  let forecastDate = null;
-  if (avgPerDay > 0 && remaining > 0) {
-    const needDays = Math.ceil(remaining / avgPerDay);
-    const est = addBusinessDays(new Date(), needDays);
-    forecastDate = formatISO(est).slice(0,10);
-  }
+  // forecast date taken from burn down forecast annotations
+  const forecastDate = devBurnDownData.value?.forecastDate || null;
 
   return {
     labels: labels.map(d => new Date(d).toISOString().split('T')[0]),
@@ -565,4 +642,22 @@ const devSparkOldestAgeReal = computed(() => {
   });
   return series.slice(-12);
 });
+
+// Graph tabs (mirror dashboard)
+const graphTabs = [
+  { key: 'burndown', label: 'Burn Down' },
+  { key: 'throughput', label: 'Throughput' },
+  { key: 'velocity', label: 'Velocity' }
+];
+const activeGraphTab = useStorage('dev_graph_tab', 'burndown');
+function focusPrevTab(){
+  const idx = graphTabs.findIndex(t => t.key === activeGraphTab.value);
+  const next = (idx - 1 + graphTabs.length) % graphTabs.length;
+  activeGraphTab.value = graphTabs[next].key;
+}
+function focusNextTab(){
+  const idx = graphTabs.findIndex(t => t.key === activeGraphTab.value);
+  const next = (idx + 1) % graphTabs.length;
+  activeGraphTab.value = graphTabs[next].key;
+}
 </script>
