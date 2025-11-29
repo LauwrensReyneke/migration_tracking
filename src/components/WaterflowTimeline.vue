@@ -142,6 +142,14 @@ const props = defineProps({
 });
 
 const today = new Date();
+function projectStart(p){
+  try {
+    if (p?.startedAt) return parseISO(p.startedAt);
+    if (p?.stage === 'planning') return new Date(today); // treat planned as starting today for rendering
+    if (p?.createdAt) return parseISO(p.createdAt);
+  } catch {}
+  return new Date(today);
+}
 
 // UI mode
 const compactMode = ref(false);
