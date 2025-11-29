@@ -87,12 +87,13 @@ const stageOptions = STAGES.filter(s => s !== 'canceled');
 
 function inDateRange(p){
   if (!(startDate.value || endDate.value)) return true;
-  // Use startedAt if present else createdAt
-  const baseISO = p.startedAt || p.createdAt;
+  const baseISO = p.startedAt;
   if (!baseISO) return false;
   let d; try { d = parseISO(baseISO); } catch { return false; }
-  if (startDate.value){ try { if (d < parseISO(startDate.value)) return false; } catch {} }
-  if (endDate.value){ try { if (d > parseISO(endDate.value)) return false; } catch {} }
+  if (startDate.value){ try { if (d < parseISO(startDate.value)) return false; } catch {}
+  }
+  if (endDate.value){ try { if (d > parseISO(endDate.value)) return false; } catch {}
+  }
   return true;
 }
 
@@ -122,10 +123,11 @@ function clearFilters(){
 
 const today = new Date();
 function startDateOf(p){
-  try { return parseISO(p.startedAt || p.createdAt); } catch { return today; }
+  try { return p.startedAt ? parseISO(p.startedAt) : null; } catch { return null; }
 }
 function expectedEnd(p){
   const s = startDateOf(p);
+  if (!s) return null;
   return addBusinessDays(s, p.targetDays ?? 4);
 }
 
@@ -135,6 +137,7 @@ const activeCount = computed(() => {
     if (p.stage === 'canceled') return false;
     if (p.completedAt) return false;
     const exp = expectedEnd(p);
+    if (!exp) return false;
     return !isAfter(today, exp);
   }).length;
 });
@@ -143,6 +146,7 @@ const overdueCount = computed(() => {
     if (p.stage === 'canceled') return false;
     if (p.completedAt) return false;
     const exp = expectedEnd(p);
+    if (!exp) return false;
     return isAfter(today, exp);
   }).length;
 });
