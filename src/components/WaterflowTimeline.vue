@@ -167,7 +167,7 @@ const totalDays = computed(()=> Math.max(1, differenceInCalendarDays(endDate.val
 function defaultStart(){
   if (!filteredProjects.value.length) return addDays(today, -7);
   const earliest = filteredProjects.value.reduce((earliest, p) => {
-    const d = parseISO(p.startedAt || p.createdAt);
+    const d = projectStart(p);
     return earliest && isBefore(earliest, d) ? earliest : d;
   }, null);
   return earliest || addDays(today, -7);
@@ -175,7 +175,7 @@ function defaultStart(){
 function defaultEnd(){
   if (!filteredProjects.value.length) return addDays(today, 30);
   const latest = filteredProjects.value.reduce((latest, p) => {
-    const s = parseISO(p.startedAt || p.createdAt);
+    const s = projectStart(p);
     const e = p.completedAt ? parseISO(p.completedAt) : addBusinessDays(s, p.targetDays ?? props.defaultTargetDays);
     return latest && isAfter(latest, e) ? latest : e;
   }, null);
@@ -183,8 +183,8 @@ function defaultEnd(){
 }
 
 const sortedProjects = computed(()=> [...filteredProjects.value].sort((a,b)=>{
-  const sa = parseISO(a.startedAt || a.createdAt);
-  const sb = parseISO(b.startedAt || b.createdAt);
+  const sa = projectStart(a);
+  const sb = projectStart(b);
   if (sa.getTime() !== sb.getTime()) return sa - sb;
   return (a.name||'').localeCompare(b.name||'');
 }));
@@ -197,7 +197,7 @@ function clampRange(s, e){
 
 function barMetrics(p){
   const w = dayWidth.value;
-  const s = parseISO(p.startedAt || p.createdAt);
+  const s = projectStart(p);
   const e = p.completedAt ? parseISO(p.completedAt) : today;
   const [cs, ce] = clampRange(s,e);
   const leftDays = Math.max(0, differenceInCalendarDays(cs, startDate.value));
@@ -212,7 +212,7 @@ function barStyle(p){
 }
 
 function expectedEnd(p){
-  const s = parseISO(p.startedAt || p.createdAt);
+  const s = projectStart(p);
   return addBusinessDays(s, p.targetDays ?? props.defaultTargetDays);
 }
 function barState(p){
@@ -235,7 +235,7 @@ function barClass(p){
 function barTextClass(){ return 'text-white/95 drop-shadow-sm'; }
 
 // Tooltip helpers
-function startOf(p){ return parseISO(p.startedAt || p.createdAt); }
+function startOf(p){ return projectStart(p); }
 function endOf(p){ return p.completedAt ? parseISO(p.completedAt) : today; }
 function durationDays(p){
   const s = startOf(p), e = endOf(p);
