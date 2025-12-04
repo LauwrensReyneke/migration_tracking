@@ -132,7 +132,7 @@
               <td class="py-1 pr-2">{{ p.stage }}</td>
               <td class="py-1 pr-2">{{ p.targetDays }}</td>
               <td class="py-1 pr-2">{{ p.startedAt?.slice(0,10) || '-' }}</td>
-              <td class="py-1 pr-2">{{ p.completedAt?.slice(0,10) || '-' }}</td>
+              <td class="py-1 pr-2">{{ (p.stage === 'canceled') ? '-' : (p.completedAt?.slice(0,10) || '-') }}</td>
               <td class="py-1 pr-2 text-right">
                 <div class="inline-flex items-center gap-1 opacity-0 group-hover:opacity-100 transition">
                   <button @click="beginEdit(p)" type="button" title="Edit" class="icon-btn text-slate-500 hover:text-slate-900 hover:bg-slate-100">
@@ -201,7 +201,10 @@ const filteredProjects = computed(() => {
   const dir = filters.sortDir === 'desc' ? -1 : 1;
   const getVal = (p) => {
     if (by === 'targetDays') return typeof p.targetDays === 'number' ? p.targetDays : null;
-    if (by === 'startedAt' || by === 'completedAt' || by === 'createdAt') return p[by] ? Date.parse(p[by]) : null;
+    if (by === 'startedAt' || by === 'completedAt' || by === 'createdAt') {
+      if (by === 'completedAt' && p.stage === 'canceled') return null; // canceled should not count as completed
+      return p[by] ? Date.parse(p[by]) : null;
+    }
     if (by === 'assignedDev' || by === 'name' || by === 'type' || by === 'stage') return (p[by] || '').toString().toLowerCase();
     return null;
   };

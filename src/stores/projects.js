@@ -239,6 +239,7 @@ export const useProjectsStore = defineStore('projects', {
       const today = new Date();
       const todayStr = formatISO(today).slice(0,10);
       const completionsByDay = {};
+      // Only count productions in completions; canceled should not be counted
       all.forEach(p => {
         if (p.stage === 'production') {
           if (p.completedAt) {
@@ -247,9 +248,6 @@ export const useProjectsStore = defineStore('projects', {
           } else {
             completionsByDay[todayStr] = (completionsByDay[todayStr]||0) + 1;
           }
-        } else if (p.stage === 'canceled') {
-          const d = (p.completedAt ? p.completedAt.slice(0,10) : todayStr);
-          completionsByDay[d] = (completionsByDay[d]||0) + 1;
         }
       });
       const firstDateISO = nonCanceled.length ? nonCanceled.reduce((earliest, p) => !earliest || p.createdAt < earliest ? p.createdAt : earliest, nonCanceled[0].createdAt) : all[0].createdAt;
