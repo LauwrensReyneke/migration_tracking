@@ -166,6 +166,7 @@ const pageTitle = computed(() => {
     case 'developers': return 'Developers';
     case 'timeline': return 'Timeline';
     case 'devDetail': return `Developer: ${route.params.dev}`;
+    case 'goLiveReport': return 'Live Sites';
     case 'login': return 'Login';
     default: return 'R-E-D | Migration Tracking';
   }

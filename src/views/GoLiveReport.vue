@@ -5,10 +5,10 @@
         <DBStatus />
       </div>
     </Teleport>
-    <h2 class="text-xl font-semibold text-slate-900">Go-Live Report (Sites per Month)</h2>
-    <p class="text-sm text-slate-600">Shows sites that went live (stage = Production) grouped by month of completion.</p>
+    <h2 class="text-xl font-semibold text-slate-900">Live Sites</h2>
+    <p class="text-sm text-slate-600">Shows sites that went live and grouped by month of completion.</p>
 
-    <div v-if="!months.length" class="rounded-xl border border-slate-200 bg-white/70 p-6 text-slate-600">No completed sites yet.</div>
+    <div v-if="!months.length" class="rounded-xl border border-slate-200 bg-white/70 p-6 text-slate-600">None completed sites yet.</div>
 
     <div v-else class="space-y-4">
       <div
@@ -51,16 +51,18 @@ function monthKeyFromISO(iso){
   try {
     const d = parseISO(iso);
     if (!isValid(d)) return null;
-    const m = startOfMonth(d);
-    return m.toISOString().slice(0,7); // YYYY-MM
+    // Use local year-month to avoid UTC shifting days into adjacent months
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`; // YYYY-MM
   } catch { return null; }
 }
 
 const months = computed(() => {
   const byMonth = {};
-  // Seed current month key
+  // Seed current month key using local
   const now = new Date();
-  const currentKey = now.toISOString().slice(0,7);
+  const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   byMonth[currentKey] = byMonth[currentKey] || [];
   (projects.value || []).forEach(p => {
     if (p.stage !== 'production') return;
@@ -80,7 +82,7 @@ const months = computed(() => {
     const dt = parseISO(k + '-01');
     const start = formatISO(startOfMonth(dt)).slice(0,10);
     const end = formatISO(endOfMonth(dt)).slice(0,10);
-    const label = new Date(k + '-01').toLocaleString(undefined, { month: 'long', year: 'numeric' });
+    const label = new Date(dt).toLocaleString(undefined, { month: 'long', year: 'numeric' });
     const items = (byMonth[k] || []).slice().sort((a,b) => String(a.completedAt||a.createdAt).localeCompare(String(b.completedAt||b.createdAt)));
     return { key: k, label, start, end, items };
   });
