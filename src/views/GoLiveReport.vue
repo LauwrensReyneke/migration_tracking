@@ -72,7 +72,7 @@ import { computed } from 'vue';
 import { parseISO, isValid, startOfMonth, endOfMonth, formatISO } from 'date-fns';
 import DBStatus from '../components/DBStatus.vue';
 import TypeBadge from '../components/partials/TypeBadge.vue';
-import MonthlyGoLivesChart from '../components/MonthlyGoLivesApex.vue';
+import MonthlyGoLivesChart from '../components/MonthlyGoLives.vue';
 
 function monthKeyFromISO(iso){
   try {
