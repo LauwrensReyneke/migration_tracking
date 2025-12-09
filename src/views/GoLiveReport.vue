@@ -74,6 +74,16 @@ import DBStatus from '../components/DBStatus.vue';
 import TypeBadge from '../components/partials/TypeBadge.vue';
 import MonthlyBarChart from '../components/MonthlyBarChart.vue';
 
+function monthKeyFromISO(iso){
+  try {
+    const d = parseISO(iso);
+    if (!isValid(d)) return null;
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    return `${y}-${m}`;
+  } catch { return null; }
+}
+
 const store = useProjectsStore();
 const { projects } = storeToRefs(store);
 
