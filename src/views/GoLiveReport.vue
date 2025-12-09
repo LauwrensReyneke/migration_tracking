@@ -96,23 +96,6 @@ const lastMonthLive = computed(() => (projects.value || []).filter(p => {
 }).length);
 const momDelta = computed(() => currentMonthLive.value - lastMonthLive.value);
 
-const barData = computed(() => monthCounts.value.map(m => ({
-  label: m.label.split(' ')[0], // month name only
-  count: m.count,
-  isCurrent: m.key === currentKey
-})));
-
-function monthKeyFromISO(iso){
-  try {
-    const d = parseISO(iso);
-    if (!isValid(d)) return null;
-    // Use local year-month to avoid UTC shifting days into adjacent months
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    return `${y}-${m}`; // YYYY-MM
-  } catch { return null; }
-}
-
 const months = computed(() => {
   const byMonth = {};
   // Seed current month key using local
@@ -142,4 +125,19 @@ const months = computed(() => {
 });
 
 const monthCounts = computed(() => months.value.map(m => ({ key: m.key, label: m.label, count: m.items.length })));
+
+const monthTypeCounts = computed(() => months.value.map(m => ({
+  key: m.key,
+  label: m.label.split(' ')[0],
+  migrationCount: m.items.filter(p => p.type === 'migration').length,
+  newbuildCount: m.items.filter(p => p.type === 'newbuild').length,
+  isCurrent: m.key === currentKey
+})));
+
+const barData = computed(() => {
+  // Oldest → Newest order
+  const arr = monthTypeCounts.value.slice();
+  // Our months are current first then desc; reverse to get oldest→newest
+  return arr.reverse();
+});
 </script>
