@@ -3,6 +3,11 @@
     <Teleport to="#header-actions">
       <div class="flex items-center gap-2">
         <DBStatus />
+        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs border border-emerald-200 bg-emerald-50 text-emerald-700 shadow-sm">
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+          <span class="font-medium">Live Sites:</span>
+          <span>{{ totalLive }}</span>
+        </span>
       </div>
     </Teleport>
 <!--    <h2 class="text-xl font-semibold text-slate-900">Live Sites</h2>-->
@@ -46,6 +51,8 @@ import TypeBadge from '../components/partials/TypeBadge.vue';
 
 const store = useProjectsStore();
 const { projects } = storeToRefs(store);
+
+const totalLive = computed(() => (projects.value || []).filter(p => p.stage === 'production').length);
 
 function monthKeyFromISO(iso){
   try {
