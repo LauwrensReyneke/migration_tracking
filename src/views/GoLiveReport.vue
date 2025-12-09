@@ -72,11 +72,11 @@ const months = computed(() => {
     if (!byMonth[key]) byMonth[key] = [];
     byMonth[key].push(p);
   });
-  // Sort keys with current month first, then ascending others
+  // Sort keys with current month first, then descending (newest to oldest) for others
   const keys = Object.keys(byMonth).sort((a,b) => {
     if (a === currentKey && b !== currentKey) return -1;
     if (b === currentKey && a !== currentKey) return 1;
-    return a.localeCompare(b);
+    return b.localeCompare(a); // YYYY-MM strings sort correctly lexicographically
   });
   return keys.map(k => {
     const dt = parseISO(k + '-01');
