@@ -30,7 +30,6 @@ const options = computed(() => ({
     stacked: true,
     toolbar: { show: false },
     animations: { enabled: true, speed: 600, easing: 'easeinout' },
-    dropShadow: { enabled: true, top: 2, left: 0, blur: 8, color: '#0f172a22' },
     foreColor: '#64748B',
     fontFamily: 'Inter, ui-sans-serif, system-ui, -apple-system',
     sparkline: { enabled: false }
@@ -56,8 +55,8 @@ const options = computed(() => ({
     bar: {
       horizontal: false,
       // widen columns so adjacent categories nearly touch
-      columnWidth: '85%',
-      borderRadius: 10,
+      columnWidth: '95%',
+      borderRadius: 8,
       borderRadiusApplication: 'around'
     }
   },
@@ -140,21 +139,20 @@ const options = computed(() => ({
     {
       breakpoint: 1024,
       options: {
-        plotOptions: { bar: { columnWidth: '88%' } },
-        grid: { padding: { left: 6, right: 6 } }
+        plotOptions: { bar: { columnWidth: '95%', borderRadius: 8 } }
       }
     },
     {
       breakpoint: 768,
       options: {
-        plotOptions: { bar: { columnWidth: '90%', borderRadius: 8 } },
+        plotOptions: { bar: { columnWidth: '95%', borderRadius: 8 } },
         grid: { padding: { left: 4, right: 4 } }
       }
     },
     {
       breakpoint: 480,
       options: {
-        plotOptions: { bar: { columnWidth: '92%', borderRadius: 8 } },
+        plotOptions: { bar: { columnWidth: '95%', borderRadius: 8 } },
         legend: { fontSize: '10px' }
       }
     }
