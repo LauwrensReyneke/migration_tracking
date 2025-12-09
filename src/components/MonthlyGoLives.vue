@@ -43,50 +43,26 @@ const options = computed(() => ({
   },
   colors: ['#3B82F6', '#10B981'],
   fill: {
-    type: 'gradient',
-    gradient: {
-      shade: 'light',
-      type: 'vertical',
-      shadeIntensity: 0.15,
-      gradientToColors: ['#60A5FA', '#34D399'],
-      inverseColors: false,
-      opacityFrom: 0.95,
-      opacityTo: 0.85,
-      stops: [0, 100]
-    }
+    type: 'solid',
+    opacity: 0.95
   },
   grid: {
+    // tighten horizontal padding so bars visually nearly touch chart edges
     strokeDashArray: 3,
     borderColor: '#E5E7EB',
-    padding: { left: 12, right: 12, top: 6, bottom: 0 }
+    padding: { left: 6, right: 6, top: 6, bottom: 0 }
   },
   plotOptions: {
     bar: {
       horizontal: false,
-      columnWidth: '52%',
+      // widen columns so adjacent categories nearly touch
+      columnWidth: '85%',
       borderRadius: 10,
-      borderRadiusApplication: 'around',
-      dataLabels: { position: 'top' }
+      borderRadiusApplication: 'around'
     }
   },
   dataLabels: {
-    enabled: true,
-    formatter: (val, opts) => {
-      const i = opts.dataPointIndex;
-      const total = (mig.value[i]||0) + (nw.value[i]||0);
-      return total > 0 ? String(total) : '';
-    },
-    style: { colors: ['#0f172a'], fontSize: '11px', fontWeight: 700 },
-    offsetY: -14,
-    background: {
-      enabled: true,
-      foreColor: '#0f172a',
-      padding: 6,
-      borderRadius: 8,
-      opacity: 0.92,
-      dropShadow: { enabled: false },
-      borderWidth: 0
-    }
+    enabled: false
   },
   xaxis: {
     categories: labels.value,
@@ -99,7 +75,7 @@ const options = computed(() => ({
   tooltip: {
     theme: 'light',
     fillSeriesColor: false,
-    custom: ({ series, seriesIndex, dataPointIndex, w }) => {
+    custom: ({ dataPointIndex, w }) => {
       const label = w.config.xaxis.categories[dataPointIndex];
       const migration = mig.value[dataPointIndex] || 0;
       const newSite = nw.value[dataPointIndex] || 0;
@@ -162,18 +138,23 @@ const options = computed(() => ({
   },
   responsive: [
     {
+      breakpoint: 1024,
+      options: {
+        plotOptions: { bar: { columnWidth: '88%' } },
+        grid: { padding: { left: 6, right: 6 } }
+      }
+    },
+    {
       breakpoint: 768,
       options: {
-        plotOptions: { bar: { columnWidth: '60%', borderRadius: 8 } },
-        dataLabels: { style: { fontSize: '10px' }, offsetY: -12 },
-        grid: { padding: { left: 8, right: 8 } }
+        plotOptions: { bar: { columnWidth: '90%', borderRadius: 8 } },
+        grid: { padding: { left: 4, right: 4 } }
       }
     },
     {
       breakpoint: 480,
       options: {
-        plotOptions: { bar: { columnWidth: '65%', borderRadius: 8 } },
-        dataLabels: { style: { fontSize: '10px' }, offsetY: -10 },
+        plotOptions: { bar: { columnWidth: '92%', borderRadius: 8 } },
         legend: { fontSize: '10px' }
       }
     }
