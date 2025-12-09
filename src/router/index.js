@@ -5,6 +5,7 @@ import DevDetail from '../views/DevDetail.vue';
 import Developers from '../views/Developers.vue';
 import Timeline from '../views/Timeline.vue';
 import Login from '../views/Login.vue';
+import GoLiveReport from '../views/GoLiveReport.vue';
 import { useAuthStore } from '../stores/auth';
 import { isLocalDev } from '../utils/sqlite';
 
@@ -14,7 +15,8 @@ const routes = [
   { path: '/projects', name: 'projects', component: Projects },
   { path: '/developers', name: 'developers', component: Developers },
   { path: '/timeline', name: 'timeline', component: Timeline },
-  { path: '/dev/:dev', name: 'devDetail', component: DevDetail, props: true }
+  { path: '/dev/:dev', name: 'devDetail', component: DevDetail, props: true },
+  { path: '/report/go-live', name: 'goLiveReport', component: GoLiveReport },
 ];
 
 const router = createRouter({
