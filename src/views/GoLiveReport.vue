@@ -5,7 +5,7 @@
         <DBStatus />
       </div>
     </Teleport>
-    <h2 class="text-xl font-semibold text-slate-900">Live Sites</h2>
+<!--    <h2 class="text-xl font-semibold text-slate-900">Live Sites</h2>-->
     <p class="text-sm text-slate-600">Shows sites that went live and grouped by month of completion.</p>
 
     <div v-if="!months.length" class="rounded-xl border border-slate-200 bg-white/70 p-6 text-slate-600">None completed sites yet.</div>
