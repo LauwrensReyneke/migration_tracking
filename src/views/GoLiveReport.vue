@@ -32,7 +32,7 @@
       </div>
     </section>
     <section class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
-      <MonthlyBarChart :data="barData" :width="720" :height="200" />
+      <MonthlyGoLivesChart :data="barData" :height="260" />
     </section>
 <!--    <h2 class="text-xl font-semibold text-slate-900">Live Sites</h2>-->
     <p class="text-sm text-slate-600">Shows sites that went live and grouped by month of completion.</p>
@@ -72,7 +72,7 @@ import { computed } from 'vue';
 import { parseISO, isValid, startOfMonth, endOfMonth, formatISO } from 'date-fns';
 import DBStatus from '../components/DBStatus.vue';
 import TypeBadge from '../components/partials/TypeBadge.vue';
-import MonthlyBarChart from '../components/MonthlyBarChart.vue';
+import MonthlyGoLivesChart from '../components/MonthlyGoLivesApex.vue';
 
 function monthKeyFromISO(iso){
   try {
@@ -134,7 +134,7 @@ const months = computed(() => {
   });
 });
 
-const monthCounts = computed(() => months.value.map(m => ({ key: m.key, label: m.label, count: m.items.length })));
+// const monthCounts = computed(() => months.value.map(m => ({ key: m.key, label: m.label, count: m.items.length })));
 
 const monthTypeCounts = computed(() => months.value.map(m => ({
   key: m.key,
