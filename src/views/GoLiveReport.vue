@@ -8,8 +8,32 @@
           <span class="font-medium">Live Sites:</span>
           <span>{{ totalLive }}</span>
         </span>
+        <span class="inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs border border-blue-200 bg-blue-50 text-blue-700 shadow-sm" :title="currentMonthLabel">
+          <span class="inline-block w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+          <span class="font-medium">This Month:</span>
+          <span>{{ currentMonthLive }}</span>
+        </span>
       </div>
     </Teleport>
+    <section class="grid md:grid-cols-3 gap-4">
+      <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+        <div class="text-xs text-slate-500">Total Live Sites</div>
+        <div class="text-2xl font-semibold text-slate-900">{{ totalLive }}</div>
+      </div>
+      <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+        <div class="text-xs text-slate-500">This Month</div>
+        <div class="text-2xl font-semibold text-slate-900">{{ currentMonthLive }}</div>
+        <div class="text-[11px] text-slate-600">{{ currentMonthLabel }}</div>
+      </div>
+      <div class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+        <div class="text-xs text-slate-500">MoM Change</div>
+        <div class="text-2xl font-semibold" :class="momDelta >= 0 ? 'text-emerald-700' : 'text-rose-700'">{{ momDelta >= 0 ? '+'+momDelta : momDelta }}</div>
+        <div class="text-[11px] text-slate-600">vs last month</div>
+      </div>
+    </section>
+    <section class="rounded-2xl border border-slate-200 bg-white/80 p-4 shadow-sm">
+      <MonthlyBarChart :data="barData" :width="720" :height="200" />
+    </section>
 <!--    <h2 class="text-xl font-semibold text-slate-900">Live Sites</h2>-->
     <p class="text-sm text-slate-600">Shows sites that went live and grouped by month of completion.</p>
 
@@ -48,11 +72,35 @@ import { computed } from 'vue';
 import { parseISO, isValid, startOfMonth, endOfMonth, formatISO } from 'date-fns';
 import DBStatus from '../components/DBStatus.vue';
 import TypeBadge from '../components/partials/TypeBadge.vue';
+import MonthlyBarChart from '../components/MonthlyBarChart.vue';
 
 const store = useProjectsStore();
 const { projects } = storeToRefs(store);
 
 const totalLive = computed(() => (projects.value || []).filter(p => p.stage === 'production').length);
+
+const now = new Date();
+const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+const currentMonthLabel = new Date(now.getFullYear(), now.getMonth(), 1).toLocaleString(undefined, { month: 'long', year: 'numeric' });
+const currentMonthLive = computed(() => (projects.value || []).filter(p => {
+  if (p.stage !== 'production') return false;
+  const iso = (p.completedAt || p.createdAt || '').slice(0,10);
+  return monthKeyFromISO(iso) === currentKey;
+}).length);
+
+const previousMonthKey = `${now.getFullYear()}-${String(now.getMonth()).padStart(2,'0')}`;
+const lastMonthLive = computed(() => (projects.value || []).filter(p => {
+  if (p.stage !== 'production') return false;
+  const iso = (p.completedAt || p.createdAt || '').slice(0,10);
+  return monthKeyFromISO(iso) === previousMonthKey;
+}).length);
+const momDelta = computed(() => currentMonthLive.value - lastMonthLive.value);
+
+const barData = computed(() => monthCounts.value.map(m => ({
+  label: m.label.split(' ')[0], // month name only
+  count: m.count,
+  isCurrent: m.key === currentKey
+})));
 
 function monthKeyFromISO(iso){
   try {
@@ -68,8 +116,6 @@ function monthKeyFromISO(iso){
 const months = computed(() => {
   const byMonth = {};
   // Seed current month key using local
-  const now = new Date();
-  const currentKey = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
   byMonth[currentKey] = byMonth[currentKey] || [];
   (projects.value || []).forEach(p => {
     if (p.stage !== 'production') return;
@@ -83,7 +129,7 @@ const months = computed(() => {
   const keys = Object.keys(byMonth).sort((a,b) => {
     if (a === currentKey && b !== currentKey) return -1;
     if (b === currentKey && a !== currentKey) return 1;
-    return b.localeCompare(a); // YYYY-MM strings sort correctly lexicographically
+    return b.localeCompare(a);
   });
   return keys.map(k => {
     const dt = parseISO(k + '-01');
@@ -94,4 +140,6 @@ const months = computed(() => {
     return { key: k, label, start, end, items };
   });
 });
+
+const monthCounts = computed(() => months.value.map(m => ({ key: m.key, label: m.label, count: m.items.length })));
 </script>
