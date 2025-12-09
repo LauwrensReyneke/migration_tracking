@@ -43,6 +43,10 @@
                     <Fa icon="clock" class="h-4 w-4 text-slate-400" />
                     <span>Timeline</span>
                   </RouterLink>
+                  <RouterLink to="/report/go-live" class="flex items-center gap-2 px-3 py-2 rounded-md text-slate-700 hover:bg-slate-50" active-class="bg-blue-50 text-blue-700 font-medium">
+                    <Fa icon="flag-checkered" class="h-4 w-4 text-slate-400" />
+                    <span>Go-Live Report</span>
+                  </RouterLink>
                 </div>
               </div>
             </nav>
@@ -88,6 +92,10 @@
               <RouterLink to="/timeline" class="flex items-center gap-2 px-3 py-2 rounded-md text-slate-700 hover:bg-slate-50" active-class="bg-blue-50 text-blue-700 font-medium">
                 <Fa icon="clock" class="h-4 w-4 text-slate-400" />
                 <span>Timeline</span>
+              </RouterLink>
+              <RouterLink to="/report/go-live" class="flex items-center gap-2 px-3 py-2 rounded-md text-slate-700 hover:bg-slate-50" active-class="bg-blue-50 text-blue-700 font-medium">
+                <Fa icon="flag-checkered" class="h-4 w-4 text-slate-400" />
+                <span>Go-Live Report</span>
               </RouterLink>
             </div>
           </div>

@@ -58,6 +58,10 @@ function monthKeyFromISO(iso){
 
 const months = computed(() => {
   const byMonth = {};
+  // Seed current month key
+  const now = new Date();
+  const currentKey = now.toISOString().slice(0,7);
+  byMonth[currentKey] = byMonth[currentKey] || [];
   (projects.value || []).forEach(p => {
     if (p.stage !== 'production') return;
     const iso = (p.completedAt || p.createdAt || '').slice(0,10);
@@ -66,13 +70,18 @@ const months = computed(() => {
     if (!byMonth[key]) byMonth[key] = [];
     byMonth[key].push(p);
   });
-  const keys = Object.keys(byMonth).sort();
+  // Sort keys with current month first, then ascending others
+  const keys = Object.keys(byMonth).sort((a,b) => {
+    if (a === currentKey && b !== currentKey) return -1;
+    if (b === currentKey && a !== currentKey) return 1;
+    return a.localeCompare(b);
+  });
   return keys.map(k => {
     const dt = parseISO(k + '-01');
     const start = formatISO(startOfMonth(dt)).slice(0,10);
     const end = formatISO(endOfMonth(dt)).slice(0,10);
     const label = new Date(k + '-01').toLocaleString(undefined, { month: 'long', year: 'numeric' });
-    const items = byMonth[k].slice().sort((a,b) => String(a.completedAt||a.createdAt).localeCompare(String(b.completedAt||b.createdAt)));
+    const items = (byMonth[k] || []).slice().sort((a,b) => String(a.completedAt||a.createdAt).localeCompare(String(b.completedAt||b.createdAt)));
     return { key: k, label, start, end, items };
   });
 });
